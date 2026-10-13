@@ -1,0 +1,81 @@
+/* Highlight for a Canvas node that the dragged node can be merged into.
+   Applied by src/highlight.ts to the node's own element, so nothing is drawn
+   over the Canvas and no layout is affected.
+
+   Deliberately avoids alpha colour functions: two stacked box-shadows (a
+   background-coloured spacer plus the accent ring) give the same visual result
+   using only opaque colours, so this works on any theme. */
+
+.canvas-drag-merge-target {
+	outline: 3px solid var(--interactive-accent);
+	outline-offset: 3px;
+	border-radius: var(--radius-m, 8px);
+	box-shadow:
+		0 0 0 1px var(--background-primary),
+		0 0 0 6px var(--interactive-accent);
+	animation: canvas-drag-merge-pulse 1.1s ease-in-out infinite;
+}
+
+/* Floating label naming the action that will run on release. Canvas nodes are
+   absolutely positioned, so an absolutely positioned pseudo-element anchors to
+   the node itself. */
+.canvas-drag-merge-target::after {
+	content: attr(data-drag-merge-hint);
+	position: absolute;
+	top: 0;
+	left: 50%;
+	transform: translate(-50%, calc(-100% - 10px));
+	padding: 4px 10px;
+	border-radius: var(--radius-s, 6px);
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-size: var(--font-ui-smaller, 12px);
+	font-weight: var(--font-medium, 500);
+	line-height: 1.4;
+	white-space: nowrap;
+	pointer-events: none;
+	z-index: 10;
+	box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
+}
+
+@keyframes canvas-drag-merge-pulse {
+	0%,
+	100% {
+		outline-color: var(--interactive-accent);
+		box-shadow:
+			0 0 0 1px var(--background-primary),
+			0 0 0 6px var(--interactive-accent);
+	}
+	50% {
+		outline-color: var(--interactive-accent-hover, var(--interactive-accent));
+		box-shadow:
+			0 0 0 1px var(--background-primary),
+			0 0 0 9px var(--interactive-accent-hover, var(--interactive-accent));
+	}
+}
+
+/* Respect users who ask for less motion: keep the ring, drop the pulse. */
+@media (prefers-reduced-motion: reduce) {
+	.canvas-drag-merge-target {
+		animation: none;
+	}
+}
+
+/* Status-bar indicator shown while the mode is armed. In toggle mode this is
+   the only persistent sign that a drag would merge, so it is deliberately
+   prominent and hidden entirely when the mode is off. */
+.canvas-drag-merge-status {
+	color: var(--text-muted);
+}
+
+.canvas-drag-merge-status:empty {
+	display: none;
+}
+
+.canvas-drag-merge-status.is-active {
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+	padding: 0 var(--size-4-2, 8px);
+	border-radius: var(--radius-s, 6px);
+	font-weight: var(--font-medium, 500);
+}
