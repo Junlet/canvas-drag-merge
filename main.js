@@ -698,7 +698,15 @@ var MEANINGLESS_NAME = /^[_\s]+$/u;
 var ILLEGAL_CHAR_REPLACEMENT = "_";
 var FALLBACK_NAME = "未命名 Excalidraw";
 var DRAWING_EXTENSION = ".excalidraw.md";
-var MARKDOWN_SUFFIX = /\.md$/iu;
+var DRAWING_SUFFIX = /\.(?:excalidraw\.md|excalidraw|md)$/iu;
+function stripDrawingSuffixes(name) {
+  let current = name;
+  for (; ; ) {
+    const next = current.replace(DRAWING_SUFFIX, "");
+    if (next === current) return current;
+    current = next;
+  }
+}
 var MAX_COLLISION_ATTEMPTS = 200;
 function normalizeWhitespace(raw) {
   return raw.replace(WHITESPACE_RUN, " ").trim();
@@ -729,8 +737,8 @@ function deriveNameFromFilePath(vaultPath) {
 }
 function prepareDrawingBaseName(raw) {
   const sanitized = sanitizeBaseName(raw);
-  const withoutMarkdown = sanitized.replace(MARKDOWN_SUFFIX, "");
-  return isUsableBaseName(withoutMarkdown) ? withoutMarkdown : FALLBACK_NAME;
+  const withoutSuffix = stripDrawingSuffixes(sanitized);
+  return isUsableBaseName(withoutSuffix) ? withoutSuffix : FALLBACK_NAME;
 }
 function buildDrawingPath(folder, baseName) {
   const fileName = `${baseName}${DRAWING_EXTENSION}`;

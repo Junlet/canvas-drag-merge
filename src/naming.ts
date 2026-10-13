@@ -67,12 +67,45 @@ export const FALLBACK_NAME = "未命名 Excalidraw";
  * Extension the Excalidraw plugin gives a drawing.
  *
  * `ExcalidrawAutomate.create()` appends `.excalidraw.md` only if the requested
- * name does not already end in `.md`, so any such suffix is stripped first.
+ * name does not already end in `.md`. That single rule causes two opposite
+ * failures, so {@link prepareDrawingBaseName} strips any trailing drawing
+ * extension first:
+ *
+ *   - a name ending in `.md` would produce a plain Markdown file instead of a
+ *     drawing, because nothing gets appended;
+ *   - a name ending in `.excalidraw` would come out doubled, as
+ *     `图.excalidraw.excalidraw.md`.
+ *
+ * The second case is the common one here: merging a node that is itself an
+ * Excalidraw drawing names the result after that file.
  */
 export const DRAWING_EXTENSION = ".excalidraw.md";
 
-/** Trailing `.md` that would suppress Excalidraw's own extension. */
-const MARKDOWN_SUFFIX = /\.md$/iu;
+/**
+ * A trailing extension that would make `create()` produce the wrong file name,
+ * either by suppressing its own extension (`.md`) or by duplicating it
+ * (`.excalidraw`, `.excalidraw.md`).
+ */
+const DRAWING_SUFFIX = /\.(?:excalidraw\.md|excalidraw|md)$/iu;
+
+/**
+ * Removes trailing drawing extensions, repeatedly.
+ *
+ * Repeats because a name can carry more than one at once: `图.excalidraw.md`
+ * loses both and becomes `图`, so `create()` appends exactly one
+ * `.excalidraw.md` instead of producing `图.excalidraw.excalidraw.md`.
+ *
+ * @param name - Sanitised candidate name.
+ * @returns The name with every trailing drawing extension removed.
+ */
+function stripDrawingSuffixes(name: string): string {
+	let current = name;
+	for (;;) {
+		const next = current.replace(DRAWING_SUFFIX, "");
+		if (next === current) return current;
+		current = next;
+	}
+}
 
 /** Cap on collision suffixes before falling back to a timestamp. */
 const MAX_COLLISION_ATTEMPTS = 200;
@@ -149,13 +182,17 @@ export function deriveNameFromFilePath(vaultPath: string): string {
 /**
  * Produces the final base name to hand to ExcalidrawAutomate's `create()`.
  *
+ * Sanitises, then strips trailing drawing extensions so Excalidraw appends its
+ * own exactly once (see {@link DRAWING_EXTENSION}), then re-validates because
+ * stripping can empty the name.
+ *
  * @param raw - Unprocessed candidate name.
  * @returns A safe base name without an extension.
  */
 export function prepareDrawingBaseName(raw: string): string {
 	const sanitized = sanitizeBaseName(raw);
-	const withoutMarkdown = sanitized.replace(MARKDOWN_SUFFIX, "");
-	return isUsableBaseName(withoutMarkdown) ? withoutMarkdown : FALLBACK_NAME;
+	const withoutSuffix = stripDrawingSuffixes(sanitized);
+	return isUsableBaseName(withoutSuffix) ? withoutSuffix : FALLBACK_NAME;
 }
 
 /**

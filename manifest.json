@@ -1,7 +1,7 @@
 {
   "id": "canvas-drag-merge",
   "name": "Canvas Drag Merge",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "minAppVersion": "1.8.7",
   "description": "按住触发键拖动画布节点，与目标节点重合时把内容合并过去。",
   "author": "Junlet",
