@@ -10,10 +10,37 @@
  * (`/ \ : * ? " < > |`), so sanitising is not cosmetic: without it the drawing
  * simply fails to be created. Every illegal character becomes `_`, which keeps
  * the name's original length and stays predictable.
+ *
+ * A second class of character is legal on disk yet still ruins the result:
+ * Obsidian itself warns that "Links will not work with file names containing
+ * any of these characters: # ^ [ ] |". This plugin names its output after a
+ * source *file*, so the trigger here is a file that is itself named with one of
+ * them (`# 计划.md`) -- rarer than the text-card case that motivated the fix in
+ * `canvas-to-excalidraw`, but the same defect and the same cure.
  */
 
 /** Illegal in a vault file name on at least one supported platform. */
 const ILLEGAL_FILENAME_CHARS = /[\\/:*?"<>|\u0000-\u001F]/gu;
+
+/**
+ * Characters Obsidian calls unsafe: they break wikilinks pointing at the file.
+ *
+ * Taken verbatim from Obsidian's own character set (`# ^ [ ] |`). `|` is
+ * already covered by {@link ILLEGAL_FILENAME_CHARS}; the rest are legal on
+ * disk, which is exactly why they are worth handling -- nothing else will
+ * reject them, and the damage only shows up later as a dead link.
+ */
+const UNSAFE_LINK_CHARS = /[#^\[\]]/gu;
+
+/**
+ * A Markdown heading marker at the very start of a name: `#` to `######`
+ * followed by the space that Markdown requires.
+ *
+ * Kept identical to the rule in `canvas-to-excalidraw` so both plugins name
+ * their output the same way. Here it fires on a source file literally called
+ * `# 计划.md`, which is named `计划` rather than `_ 计划`.
+ */
+const LEADING_HEADING_MARKER = /^#{1,6}[ \t]+/u;
 
 /** Names Windows refuses to create, with or without an extension. */
 const WINDOWS_RESERVED_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/iu;
@@ -61,6 +88,16 @@ export function normalizeWhitespace(raw: string): string {
 }
 
 /**
+ * Drops a leading Markdown heading marker, if the text has one.
+ *
+ * @param text - Single-line text, already whitespace-collapsed.
+ * @returns The text without its leading `#`…`######` marker.
+ */
+export function stripLeadingHeadingMarker(text: string): string {
+	return text.replace(LEADING_HEADING_MARKER, "");
+}
+
+/**
  * Reports whether a candidate is non-empty and not a Windows reserved name.
  *
  * @param name - Candidate name.
@@ -77,17 +114,19 @@ export function isUsableBaseName(name: string): boolean {
  *
  * Whitespace is collapsed **first**: newline and tab are themselves control
  * characters in the illegal range, so replacing them before collapsing would
- * turn a blank card into a row of underscores instead of an empty string.
+ * turn a blank card into a row of underscores instead of an empty string. The
+ * heading marker is dropped next, so it counts as formatting rather than as a
+ * character to replace.
  *
  * @param raw - Candidate name, already trimmed of any extension.
  * @returns A safe, meaningful name, or {@link FALLBACK_NAME} otherwise.
  */
 export function sanitizeBaseName(raw: string): string {
 	const collapsed = normalizeWhitespace(raw);
-	const replaced = collapsed.replace(
-		ILLEGAL_FILENAME_CHARS,
-		ILLEGAL_CHAR_REPLACEMENT
-	);
+	const withoutMarker = stripLeadingHeadingMarker(collapsed);
+	const replaced = withoutMarker
+		.replace(ILLEGAL_FILENAME_CHARS, ILLEGAL_CHAR_REPLACEMENT)
+		.replace(UNSAFE_LINK_CHARS, ILLEGAL_CHAR_REPLACEMENT);
 	const trimmed = replaced.replace(TRAILING_DOT_OR_SPACE, "");
 	if (!isUsableBaseName(trimmed) || MEANINGLESS_NAME.test(trimmed)) {
 		return FALLBACK_NAME;

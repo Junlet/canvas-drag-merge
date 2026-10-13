@@ -1,6 +1,6 @@
 {
   "name": "canvas-drag-merge",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Merge Canvas nodes by dragging one onto another while a trigger key is held.",
   "main": "main.js",
   "scripts": {

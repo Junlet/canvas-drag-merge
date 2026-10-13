@@ -689,6 +689,8 @@ function trimLeadingBlankLines(markdown) {
 
 // src/naming.ts
 var ILLEGAL_FILENAME_CHARS = /[\\/:*?"<>|\u0000-\u001F]/gu;
+var UNSAFE_LINK_CHARS = /[#^\[\]]/gu;
+var LEADING_HEADING_MARKER = /^#{1,6}[ \t]+/u;
 var WINDOWS_RESERVED_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/iu;
 var TRAILING_DOT_OR_SPACE = /[. ]+$/u;
 var WHITESPACE_RUN = /\s+/gu;
@@ -701,6 +703,9 @@ var MAX_COLLISION_ATTEMPTS = 200;
 function normalizeWhitespace(raw) {
   return raw.replace(WHITESPACE_RUN, " ").trim();
 }
+function stripLeadingHeadingMarker(text) {
+  return text.replace(LEADING_HEADING_MARKER, "");
+}
 function isUsableBaseName(name) {
   if (name.length === 0) return false;
   if (name === "." || name === "..") return false;
@@ -708,10 +713,8 @@ function isUsableBaseName(name) {
 }
 function sanitizeBaseName(raw) {
   const collapsed = normalizeWhitespace(raw);
-  const replaced = collapsed.replace(
-    ILLEGAL_FILENAME_CHARS,
-    ILLEGAL_CHAR_REPLACEMENT
-  );
+  const withoutMarker = stripLeadingHeadingMarker(collapsed);
+  const replaced = withoutMarker.replace(ILLEGAL_FILENAME_CHARS, ILLEGAL_CHAR_REPLACEMENT).replace(UNSAFE_LINK_CHARS, ILLEGAL_CHAR_REPLACEMENT);
   const trimmed = replaced.replace(TRAILING_DOT_OR_SPACE, "");
   if (!isUsableBaseName(trimmed) || MEANINGLESS_NAME.test(trimmed)) {
     return FALLBACK_NAME;
