@@ -6,6 +6,8 @@
  * `typeof === "function"` before use.
  */
 
+import { t } from "./i18n";
+
 /** Node kinds Obsidian's Canvas can hold. */
 export type CanvasNodeType = "text" | "file" | "link" | "group";
 
@@ -81,13 +83,11 @@ export function isNodeData(value: unknown): value is CanvasNodeData {
  */
 export function readCanvasData(canvas: CanvasLike): CanvasData {
 	if (typeof canvas.getData !== "function") {
-		throw new CanvasUnavailableError(
-			"当前 Obsidian 版本的 Canvas 缺少 getData()，无法读取画布。"
-		);
+		throw new CanvasUnavailableError(t("error.canvasNoGetData"));
 	}
 	const data = canvas.getData();
 	if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.edges)) {
-		throw new CanvasUnavailableError("Canvas 返回的数据结构无法识别。");
+		throw new CanvasUnavailableError(t("error.canvasUnreadable"));
 	}
 	return data;
 }

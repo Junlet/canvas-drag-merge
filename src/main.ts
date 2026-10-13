@@ -60,7 +60,7 @@ import {
 	type TriggerSpec,
 } from "./trigger";
 import {
-	ACTION_LABELS,
+	actionLabel,
 	classifyNode as classifyNodePure,
 	kindLabel,
 	resolveMergeAction,
@@ -85,6 +85,7 @@ import {
 	normalizeSettings,
 	type CanvasDragMergeSettings,
 } from "./settings";
+import { setLanguage, t } from "./i18n";
 
 /** How long to keep result Notices on screen. */
 const NOTICE_DURATION_MS = 8000;
@@ -140,6 +141,9 @@ export default class CanvasDragMergePlugin extends Plugin {
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
+		// Before anything renders text: the language must be in effect for the
+		// settings tab, the commands and every Notice below.
+		setLanguage(this.settings.language);
 		this.addSettingTab(new CanvasDragMergeSettingTab(this.app, this));
 
 		this.statusBarEl = this.addStatusBarItem();
@@ -171,19 +175,20 @@ export default class CanvasDragMergePlugin extends Plugin {
 
 		this.addCommand({
 			id: "toggle-key-diagnostics",
-			name: "切换按键诊断（把每次按键打到控制台）",
+			name: t("command.toggleKeyDiagnostics"),
 			callback: () => {
 				this.keyDiagnostics = !this.keyDiagnostics;
 				new Notice(
-					`按键诊断已${this.keyDiagnostics ? "开启" : "关闭"}。` +
-						(this.keyDiagnostics ? "现在按任意键，看 Ctrl+Shift+I 控制台。" : "")
+					this.keyDiagnostics
+						? t("notice.keyDiagnosticsOn")
+						: t("notice.keyDiagnosticsOff")
 				);
 			},
 		});
 
 		this.addCommand({
 			id: "arm-merge-mode",
-			name: "开启合并模式",
+			name: t("command.armMergeMode"),
 			checkCallback: (checking: boolean) => {
 				if (!this.isCanvasActive()) return false;
 				if (!checking) this.armMode();
@@ -192,10 +197,10 @@ export default class CanvasDragMergePlugin extends Plugin {
 		});
 
 		console.log(
-			"[canvas-drag-merge] 已加载，触发键 =",
-			this.settings.triggerKey,
-			"方式 =",
-			this.settings.triggerMode
+			`[canvas-drag-merge] ${t("log.loaded", {
+				key: this.settings.triggerKey,
+				mode: this.settings.triggerMode,
+			})}`
 		);
 	}
 
@@ -212,16 +217,21 @@ export default class CanvasDragMergePlugin extends Plugin {
 	private onKeyDown = (event: KeyboardEvent): void => {
 		if (this.keyDiagnostics) {
 			console.log(
-				`[canvas-drag-merge] keydown key="${event.key}" ` +
-					`ctrl=${event.ctrlKey} alt=${event.altKey} shift=${event.shiftKey} ` +
-					`meta=${event.metaKey} repeat=${event.repeat}`
+				`[canvas-drag-merge] ${t("log.keydown", {
+					key: event.key,
+					ctrl: String(event.ctrlKey),
+					alt: String(event.altKey),
+					shift: String(event.shiftKey),
+					meta: String(event.metaKey),
+					repeat: String(event.repeat),
+				})}`
 			);
 		}
 
 		// Escape is always an escape hatch, whatever the trigger is.
 		if (event.key === "Escape" && this.modeActive) {
 			this.disarmMode();
-			new Notice("合并模式已关闭。");
+			new Notice(t("notice.modeClosed"));
 			return;
 		}
 
@@ -259,7 +269,10 @@ export default class CanvasDragMergePlugin extends Plugin {
 	private onKeyUp = (event: KeyboardEvent): void => {
 		if (this.keyDiagnostics) {
 			console.log(
-				`[canvas-drag-merge] keyup   key="${event.key}" code="${event.code}"`
+				`[canvas-drag-merge] ${t("log.keyup", {
+					key: event.key,
+					code: event.code,
+				})}`
 			);
 		}
 		if (this.settings.triggerMode !== "hold") return;
@@ -272,11 +285,14 @@ export default class CanvasDragMergePlugin extends Plugin {
 		if (this.modeActive) return;
 		this.modeActive = true;
 		this.renderStatusBar();
-		console.log("[canvas-drag-merge] 模式已开启");
+		console.log(`[canvas-drag-merge] ${t("log.modeArmed")}`);
 		new Notice(
-			this.settings.triggerMode === "toggle"
-				? `✅ 合并模式已开启，把节点拖到目标上再松手；再按一次 ${this.settings.triggerKey} 或 Esc 可关闭。`
-				: `✅ 合并模式已开启（按住 ${this.settings.triggerKey}）——把节点拖到目标上再松手。`,
+			t(
+				this.settings.triggerMode === "toggle"
+					? "notice.modeArmedToggle"
+					: "notice.modeArmedHold",
+				{ key: this.settings.triggerKey }
+			),
 			NOTICE_DURATION_MS
 		);
 	}
@@ -288,15 +304,13 @@ export default class CanvasDragMergePlugin extends Plugin {
 		if (!this.modeActive) return;
 		this.modeActive = false;
 		this.renderStatusBar();
-		console.log("[canvas-drag-merge] 模式已关闭");
+		console.log(`[canvas-drag-merge] ${t("log.modeDisarmed")}`);
 	};
 
 	/** Shows or hides the status-bar indicator. */
 	private renderStatusBar(): void {
 		if (!this.statusBarEl) return;
-		this.statusBarEl.setText(
-			this.modeActive ? "🖱 合并模式：拖动节点以合并" : ""
-		);
+		this.statusBarEl.setText(this.modeActive ? t("status.armed") : "");
 		this.statusBarEl.toggleClass("is-active", this.modeActive);
 	}
 
@@ -313,7 +327,7 @@ export default class CanvasDragMergePlugin extends Plugin {
 			const data = readCanvasData(canvas);
 			this.drag = { canvas, positions: snapshotPositions(data.nodes) };
 		} catch (error) {
-			console.error("[canvas-drag-merge] 快照失败", error);
+			console.error(`[canvas-drag-merge] ${t("log.snapshotFailed")}`, error);
 			this.drag = null;
 		}
 	};
@@ -375,7 +389,7 @@ export default class CanvasDragMergePlugin extends Plugin {
 				if (plugin.isExcalidrawFile(file)) return true;
 			} catch (error) {
 				console.error(
-					"[canvas-drag-merge] isExcalidrawFile() 抛错，回退到元数据判定",
+					`[canvas-drag-merge] ${t("log.isExcalidrawFileFailed")}`,
 					error
 				);
 			}
@@ -385,7 +399,10 @@ export default class CanvasDragMergePlugin extends Plugin {
 			const cache = this.app.metadataCache.getFileCache(file);
 			return marksDrawing(cache?.frontmatter, cache?.tags);
 		} catch (error) {
-			console.error("[canvas-drag-merge] 读取元数据失败", error);
+			console.error(
+				`[canvas-drag-merge] ${t("log.readMetadataFailed")}`,
+				error
+			);
 			return false;
 		}
 	}
@@ -420,7 +437,7 @@ export default class CanvasDragMergePlugin extends Plugin {
 			if (!this.isActionAvailable(action)) continue;
 			targets.push({
 				id: overlap.target.id,
-				hint: ACTION_LABELS[action],
+				hint: actionLabel(action),
 			});
 		}
 		return targets;
@@ -455,7 +472,7 @@ export default class CanvasDragMergePlugin extends Plugin {
 		this.busy = true;
 		try {
 			if (session.canvas.readonly) {
-				new Notice("这个画布是只读的，无法合并。", NOTICE_DURATION_MS);
+				new Notice(t("notice.canvasReadonly"), NOTICE_DURATION_MS);
 				return;
 			}
 
@@ -467,7 +484,7 @@ export default class CanvasDragMergePlugin extends Plugin {
 			const overlaps = findBestOverlaps(moved, data.nodes);
 			if (overlaps.length === 0) {
 				new Notice(
-					`合并模式：移动了 ${moved.length} 个节点，但没有和目标重合。`,
+					t("notice.noOverlap", { count: moved.length }),
 					NOTICE_DURATION_MS
 				);
 				return;
@@ -475,13 +492,14 @@ export default class CanvasDragMergePlugin extends Plugin {
 
 			await this.applyMerges(session.canvas, data, overlaps);
 		} catch (error) {
-			console.error("[canvas-drag-merge] 合并失败", error);
+			console.error(`[canvas-drag-merge] ${t("log.mergeFailed")}`, error);
 			new Notice(
-				`合并失败：${
-					error instanceof CanvasUnavailableError
-						? error.message
-						: String(error)
-				}`,
+				t("notice.mergeFailed", {
+					error:
+						error instanceof CanvasUnavailableError
+							? error.message
+							: String(error),
+				}),
 				NOTICE_DURATION_MS
 			);
 		} finally {
@@ -540,7 +558,9 @@ export default class CanvasDragMergePlugin extends Plugin {
 
 			if (!this.isActionAvailable(action)) {
 				if (action === "merge-images-into-excalidraw") {
-					summaries.push(`${pair}：设置里关闭了「图片→图片合并为图纸」`);
+					summaries.push(
+						t("summary.imagesToExcalidrawDisabled", { pair })
+					);
 				}
 				continue;
 			}
@@ -554,17 +574,24 @@ export default class CanvasDragMergePlugin extends Plugin {
 					sourceKind,
 					targetKind
 				);
-				summaries.push(`${pair}：${outcome.detail}`);
+				summaries.push(
+					t("summary.pairDetail", { pair, detail: outcome.detail })
+				);
 				if (outcome.changed && outcome.consumesSource !== false) {
 					consumed.add(overlap.moved.id);
 				}
 				if (outcome.canvasChanged) canvasChanged = true;
 			} catch (error) {
-				console.error("[canvas-drag-merge] 单条合并失败", error);
+				console.error(
+					`[canvas-drag-merge] ${t("log.singleMergeFailed")}`,
+					error
+				);
 				summaries.push(
-					`${pair}：失败 —— ${
-						error instanceof Error ? error.message : String(error)
-					}`
+					t("summary.pairFailed", {
+						pair,
+						error:
+							error instanceof Error ? error.message : String(error),
+					})
 				);
 			}
 		}
@@ -576,18 +603,22 @@ export default class CanvasDragMergePlugin extends Plugin {
 			if (removed.nodes > 0) {
 				canvasChanged = true;
 				summaries.push(
-					`已从画布移除源节点 ${removed.nodes} 个` +
-						(removed.edges > 0 ? `、相关连线 ${removed.edges} 条` : "")
+					t("summary.removedNodes", { count: removed.nodes }) +
+						(removed.edges > 0
+							? t("summary.removedEdges", {
+									count: removed.edges,
+								})
+							: "")
 				);
 			}
 		} else if (consumed.size > 0) {
-			summaries.push("（设置里关闭了「合并后删除源节点」，源节点保留）");
+			summaries.push(t("summary.sourceKept"));
 		}
 
 		if (canvasChanged) await this.writeCanvas(canvas, data);
 
-		const message = summaries.join("；");
-		console.log("[canvas-drag-merge] 合并完成", message);
+		const message = summaries.join(t("summary.separator"));
+		console.log(`[canvas-drag-merge] ${t("log.mergeDone")}`, message);
 		new Notice(`✅ ${message}`, NOTICE_DURATION_MS);
 
 		// In toggle mode a completed gesture ends the session, so an accidental
@@ -606,9 +637,7 @@ export default class CanvasDragMergePlugin extends Plugin {
 		data: CanvasData
 	): Promise<void> {
 		if (typeof canvas.setData !== "function") {
-			throw new CanvasUnavailableError(
-				"当前 Obsidian 版本的 Canvas 缺少 setData()，无法写回画布。"
-			);
+			throw new CanvasUnavailableError(t("error.canvasNoSetData"));
 		}
 		await canvas.setData(data);
 		if (typeof canvas.requestSave === "function") {

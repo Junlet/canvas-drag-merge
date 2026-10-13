@@ -18,6 +18,8 @@
  * action to fight.
  */
 
+import { t, type MessageKey } from "./i18n";
+
 /** How the trigger key arms the mode. */
 export type TriggerMode = "hold" | "toggle";
 
@@ -36,17 +38,37 @@ export interface TriggerOption {
  * riskiest entries: Canvas and the OS already use modifier+drag for duplicate /
  * constrain / multi-select, and several Chinese IMEs claim Shift. The labels say
  * so rather than hiding it.
+ *
+ * Only the *values* live here. They are persisted in settings and matched
+ * against key events, so they must stay byte-identical whatever the interface
+ * language is; the labels are resolved on demand by {@link triggerKeyOptions}.
  */
-export const TRIGGER_KEY_OPTIONS: TriggerOption[] = [
-	{ value: "Ctrl+Shift+M", label: "Ctrl + Shift + M（推荐，无冲突）" },
-	{ value: "Ctrl+Alt+M", label: "Ctrl + Alt + M" },
-	{ value: "Alt+Shift+M", label: "Alt + Shift + M" },
-	{ value: "Alt", label: "Alt（可能和画布拖拽修饰冲突）" },
-	{ value: "Control", label: "Ctrl（可能和画布拖拽修饰冲突）" },
-	{ value: "Shift", label: "Shift（可能和画布/输入法冲突）" },
-	{ value: "CapsLock", label: "CapsLock（可能被输入法占用）" },
-	{ value: "Tab", label: "Tab（会占用画布里的 Tab 导航）" },
+const TRIGGER_KEY_ROWS: ReadonlyArray<{ value: string; key: MessageKey }> = [
+	{ value: "Ctrl+Shift+M", key: "settings.triggerKey.option.ctrlShiftM" },
+	{ value: "Ctrl+Alt+M", key: "settings.triggerKey.option.ctrlAltM" },
+	{ value: "Alt+Shift+M", key: "settings.triggerKey.option.altShiftM" },
+	{ value: "Alt", key: "settings.triggerKey.option.alt" },
+	{ value: "Control", key: "settings.triggerKey.option.control" },
+	{ value: "Shift", key: "settings.triggerKey.option.shift" },
+	{ value: "CapsLock", key: "settings.triggerKey.option.capsLock" },
+	{ value: "Tab", key: "settings.triggerKey.option.tab" },
 ];
+
+/**
+ * The trigger combinations to offer, labelled in the current language.
+ *
+ * A function rather than a constant: a module-level `t()` call would be
+ * evaluated at import time, before settings -- and therefore the language --
+ * have been loaded.
+ *
+ * @returns One entry per offered combination, best first.
+ */
+export function triggerKeyOptions(): TriggerOption[] {
+	return TRIGGER_KEY_ROWS.map((row) => ({
+		value: row.value,
+		label: t(row.key),
+	}));
+}
 
 /** Default trigger: conflict-free and IME-proof. */
 const DEFAULT_TRIGGER = "Ctrl+Shift+M";
@@ -81,12 +103,12 @@ export interface TriggerSpec {
  * Reports whether a value is one of the offered trigger combinations.
  *
  * @param value - Candidate value.
- * @returns True when the value appears in {@link TRIGGER_KEY_OPTIONS}.
+ * @returns True when the value appears in {@link TRIGGER_KEY_ROWS}.
  */
 export function isKnownTriggerKey(value: unknown): value is string {
 	return (
 		typeof value === "string" &&
-		TRIGGER_KEY_OPTIONS.some((option) => option.value === value)
+		TRIGGER_KEY_ROWS.some((option) => option.value === value)
 	);
 }
 

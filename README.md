@@ -41,6 +41,7 @@ Hold a trigger key, drag a Canvas node onto another, and the two are merged on r
 
 | 设置 | 默认 | 说明 |
 |---|---|---|
+| 界面语言 | 中文 | 「自动（跟随 Obsidian）」/ 中文 / English |
 | 触发键 | `Ctrl + Shift + M` | 也支持 `Ctrl+Alt+M`、`Alt+Shift+M`、单键 Alt / Ctrl / Shift、CapsLock、Tab |
 | 触发方式 | 按一下切换 | 或「按住不放」 |
 | 只在画布中生效 | 开 | 其它页面按触发键完全无反应 |
@@ -88,6 +89,12 @@ Mergeable targets are **highlighted during the drag**, with a label naming the a
 - Obsidian ≥ 1.8.7 — **desktop only**, the trigger is a keyboard hold/toggle
 - The **Canvas** core plugin enabled
 - The **Excalidraw** community plugin, needed only for the image/drawing rules
+
+### Language
+
+The interface is available in Chinese and English. The setting has three values — **Automatic** (follow Obsidian's own language), **中文**, and **English** — and ships defaulting to Chinese.
+
+Detection reads `localStorage["language"]` (the key Obsidian itself uses) and falls back to `window.moment.locale()`, then to the OS locale. Any non-Chinese language resolves to English.
 
 ### How the drag is detected
 

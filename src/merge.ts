@@ -33,6 +33,7 @@ import {
 	type DrawingEmbedMode,
 	type ExcalidrawBridge,
 } from "./excalidraw";
+import { t } from "./i18n";
 
 /** Blank line inserted between existing content and appended content. */
 const APPEND_SEPARATOR = "\n\n";
@@ -110,7 +111,11 @@ async function stageNodeIntoDrawing(
 	const vaultPath = typeof source.file === "string" ? source.file : "";
 	const file = vaultPath ? resolveVaultFile(app, vaultPath) : null;
 	if (!file) {
-		throw new DrawingFailedError(`找不到源文件：${vaultPath || "(空)"}`);
+		throw new DrawingFailedError(
+			t("error.sourceFileNotFound", {
+				path: vaultPath || t("value.empty"),
+			})
+		);
 	}
 
 	// Interactive form only makes sense for files the user can actually read
@@ -120,9 +125,12 @@ async function stageNodeIntoDrawing(
 		embedMode === "interactive" && (kind === "note" || kind === "drawing");
 
 	console.log(
-		`[canvas-drag-merge] 正在把 ${kind} 以${
-			wantsEmbed ? "交互" : "图像"
-		}形式加入图纸：${file.path}`
+		`[canvas-drag-merge] ${t("log.stagingIntoDrawing", {
+			// The raw kind identifier is kept in the log, exactly as before.
+			kind,
+			form: t(wantsEmbed ? "form.interactive" : "form.image"),
+			path: file.path,
+		})}`
 	);
 
 	if (wantsEmbed) {
@@ -137,7 +145,7 @@ async function stageNodeIntoDrawing(
 		);
 		if (embedId) return 1;
 		console.warn(
-			"[canvas-drag-merge] 交互形式失败，回退为图像形式：",
+			`[canvas-drag-merge] ${t("log.embedFailedFallback")}`,
 			file.path
 		);
 	}
@@ -149,7 +157,7 @@ async function stageNodeIntoDrawing(
 	const elementId = await ea.addImage(offsetX, offsetY, file, false, anchor);
 	if (!elementId) {
 		throw new DrawingFailedError(
-			`Excalidraw 无法把「${file.name}」渲染成图片`
+			t("error.cannotRenderImage", { name: file.name })
 		);
 	}
 	return 1;
@@ -200,7 +208,7 @@ function buildLinkText(app: App, file: TFile, sourcePath: string): string {
 		if (typeof text === "string" && text.length > 0) return text;
 	} catch (error) {
 		console.error(
-			"[canvas-drag-merge] fileToLinktext() 失败，回退到完整路径",
+			`[canvas-drag-merge] ${t("log.fileToLinktextFailed")}`,
 			error
 		);
 	}
@@ -285,12 +293,16 @@ export async function executeMerge(
 		case "copy-text-to-card": {
 			const markdown = markdownFromNode(source, sourceKind);
 			if (!markdown) {
-				return { action, detail: "源卡片是空的，没有可复制的内容", changed: false };
+				return {
+					action,
+					detail: t("detail.emptySourceCard"),
+					changed: false,
+				};
 			}
 			appendToCardText(target, markdown);
 			return {
 				action,
-				detail: "已把源卡片的文本追加到目标卡片",
+				detail: t("detail.textAppendedToCard"),
 				changed: true,
 				canvasChanged: true,
 			};
@@ -299,12 +311,12 @@ export async function executeMerge(
 		case "insert-image-into-card": {
 			const markdown = markdownFromNode(source, sourceKind);
 			if (!markdown) {
-				return { action, detail: "图片节点没有文件路径", changed: false };
+				return { action, detail: t("detail.imageHasNoPath"), changed: false };
 			}
 			appendToCardText(target, markdown);
 			return {
 				action,
-				detail: "已把图片作为嵌入插入目标卡片",
+				detail: t("detail.imageEmbeddedInCard"),
 				changed: true,
 				canvasChanged: true,
 			};
@@ -316,7 +328,13 @@ export async function executeMerge(
 				? resolveVaultFile(context.app, vaultPath, context.sourcePath)
 				: null;
 			if (!file) {
-				return { action, detail: `找不到文件：${vaultPath || "(空)"}`, changed: false };
+				return {
+					action,
+					detail: t("detail.fileNotFound", {
+						path: vaultPath || t("value.empty"),
+					}),
+					changed: false,
+				};
 			}
 
 			// A Canvas text card holds Markdown, so both forms render natively:
@@ -331,9 +349,11 @@ export async function executeMerge(
 
 			return {
 				action,
-				detail: `已把${kindLabel(sourceKind)}以${
-					context.cardLinkEmbedded ? "嵌入" : "链接"
-				}形式写入目标卡片：${link}`,
+				detail: t("detail.linkWrittenToCard", {
+					kind: kindLabel(sourceKind),
+					form: t(context.cardLinkEmbedded ? "form.embed" : "form.link"),
+					link,
+				}),
 				changed: true,
 				canvasChanged: true,
 			};
@@ -345,16 +365,24 @@ export async function executeMerge(
 				? resolveVaultFile(context.app, targetPath)
 				: null;
 			if (!noteFile) {
-				return { action, detail: `找不到目标笔记：${targetPath}`, changed: false };
+				return {
+					action,
+					detail: t("detail.targetNoteNotFound", { path: targetPath }),
+					changed: false,
+				};
 			}
 			const markdown = markdownFromNode(source, sourceKind);
 			if (!markdown) {
-				return { action, detail: "源节点没有可插入的内容", changed: false };
+				return {
+					action,
+					detail: t("detail.sourceHasNoContent"),
+					changed: false,
+				};
 			}
 			await appendToNote(context.app, noteFile, markdown);
 			return {
 				action,
-				detail: `已把内容追加到笔记 ${noteFile.name} 的结尾`,
+				detail: t("detail.appendedToNote", { name: noteFile.name }),
 				changed: true,
 			};
 		}
@@ -369,13 +397,21 @@ export async function executeMerge(
 				? resolveVaultFile(context.app, targetPath)
 				: null;
 			if (!sourceFile) {
-				return { action, detail: `找不到源笔记：${sourcePath}`, changed: false };
+				return {
+					action,
+					detail: t("detail.sourceNoteNotFound", { path: sourcePath }),
+					changed: false,
+				};
 			}
 			if (!targetFile) {
-				return { action, detail: `找不到目标笔记：${targetPath}`, changed: false };
+				return {
+					action,
+					detail: t("detail.targetNoteNotFound", { path: targetPath }),
+					changed: false,
+				};
 			}
 			if (sourceFile.path === targetFile.path) {
-				return { action, detail: "源笔记和目标笔记是同一个文件", changed: false };
+				return { action, detail: t("detail.sameNote"), changed: false };
 			}
 
 			const raw = await context.app.vault.read(sourceFile);
@@ -383,7 +419,7 @@ export async function executeMerge(
 			if (body.trim().length === 0) {
 				return {
 					action,
-					detail: "源笔记去掉属性后没有正文，未追加",
+					detail: t("detail.sourceBodyEmpty"),
 					changed: false,
 				};
 			}
@@ -392,10 +428,13 @@ export async function executeMerge(
 
 			// Only the *file* deletion is optional here; removing the node is
 			// handled by the caller like every other merge.
-			let detail = `已把笔记 ${sourceFile.name} 的正文追加到 ${targetFile.name} 结尾（已去掉属性）`;
+			let detail = t("detail.noteBodyAppended", {
+				source: sourceFile.name,
+				target: targetFile.name,
+			});
 			if (context.deleteSourceNoteFile) {
 				await context.app.fileManager.trashFile(sourceFile);
-				detail += "，并把源笔记移入回收站";
+				detail += t("detail.andTrashed");
 			}
 			return { action, detail, changed: true };
 		}
@@ -404,7 +443,7 @@ export async function executeMerge(
 			if (!context.excalidraw) {
 				return {
 					action,
-					detail: "未找到已启用的 Excalidraw 插件，无法加入图纸",
+					detail: t("detail.excalidrawMissingForAppend"),
 					changed: false,
 				};
 			}
@@ -413,7 +452,11 @@ export async function executeMerge(
 				? resolveVaultFile(context.app, targetPath)
 				: null;
 			if (!drawingFile) {
-				return { action, detail: `找不到图纸：${targetPath}`, changed: false };
+				return {
+					action,
+					detail: t("detail.drawingNotFound", { path: targetPath }),
+					changed: false,
+				};
 			}
 
 			const note = await appendToDrawing(
@@ -435,14 +478,17 @@ export async function executeMerge(
 
 			return {
 				action,
-				detail:
-					`已把${kindLabel(sourceKind)}以` +
-					`${
+				detail: t("detail.addedToDrawing", {
+					kind: kindLabel(sourceKind),
+					form: t(
 						context.drawingEmbedMode === "interactive" &&
-						(sourceKind === "note" || sourceKind === "drawing")
-							? "交互"
-							: "图像"
-					}形式加入图纸「${drawingFile.name}」${note}`,
+							(sourceKind === "note" || sourceKind === "drawing")
+							? "form.interactive"
+							: "form.image"
+					),
+					name: drawingFile.name,
+					note,
+				}),
 				changed: true,
 				// Only the drawing file changed; the Canvas itself is untouched
 				// apart from the source node the caller removes.
@@ -454,7 +500,7 @@ export async function executeMerge(
 			if (!context.excalidraw) {
 				return {
 					action,
-					detail: "未找到已启用的 Excalidraw 插件，无法合并为图纸",
+					detail: t("detail.excalidrawMissingForMerge"),
 					changed: false,
 				};
 			}
@@ -519,7 +565,7 @@ export async function executeMerge(
 
 			return {
 				action,
-				detail: `已把两张图片合并为图纸「${drawingPath}」`,
+				detail: t("detail.imagesMerged", { path: drawingPath }),
 				changed: true,
 				canvasChanged: true,
 				// Both nodes are gone already -- the caller must not also remove
@@ -529,7 +575,11 @@ export async function executeMerge(
 		}
 
 		default:
-			return { action: "nothing", detail: "该组合不做任何操作", changed: false };
+			return {
+				action: "nothing",
+				detail: t("detail.nothing"),
+				changed: false,
+			};
 	}
 }
 

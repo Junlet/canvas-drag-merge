@@ -14,6 +14,7 @@
 
 import type { App, TFile } from "obsidian";
 import type { CanvasNodeData } from "./types";
+import { t } from "./i18n";
 
 /** Folder/id of the Excalidraw plugin in Obsidian's plugin registry. */
 export const EXCALIDRAW_PLUGIN_ID = "obsidian-excalidraw-plugin";
@@ -130,7 +131,7 @@ export class DrawingFailedError extends Error {}
 export class AppendStepError extends Error {
 	constructor(step: string, cause: unknown) {
 		const detail = cause instanceof Error ? cause.message : String(cause);
-		super(`${step}：${detail}`);
+		super(t("error.appendStep", { step, detail }));
 		this.name = "AppendStepError";
 	}
 }
@@ -198,7 +199,7 @@ export function addEmbeddableWithStubView(
 		);
 	} catch (error) {
 		console.error(
-			"[canvas-drag-merge] addEmbeddable() 失败，将回退为图像形式",
+			`[canvas-drag-merge] ${t("log.addEmbeddableFailed")}`,
 			error
 		);
 		return null;
@@ -243,7 +244,10 @@ export function acquireExcalidraw(app: App): ExcalidrawBridge | null {
 		if (!ea || typeof ea.create !== "function") return null;
 		return { ea, plugin };
 	} catch (error) {
-		console.error("[canvas-drag-merge] ExcalidrawAutomate.getAPI() failed", error);
+		console.error(
+			`[canvas-drag-merge] ${t("log.getApiFailed")}`,
+			error
+		);
 		return null;
 	}
 }
@@ -283,7 +287,7 @@ async function ensureFolder(app: App, folder: string): Promise<void> {
 		// createFolder throws when the folder appeared in the meantime, which
 		// is not a failure worth reporting.
 		console.warn(
-			"[canvas-drag-merge] 创建文件夹时出错（可能已存在）：",
+			`[canvas-drag-merge] ${t("log.createFolderFailed")}`,
 			folder,
 			error
 		);
@@ -397,7 +401,7 @@ async function computeAppendOffset(
 		return bottom > 0 ? bottom + APPEND_GAP : 0;
 	} catch (error) {
 		console.error(
-			"[canvas-drag-merge] getSceneFromFile() failed; appending at origin",
+			`[canvas-drag-merge] ${t("log.getSceneFailed")}`,
 			error
 		);
 		return 0;
@@ -447,14 +451,14 @@ export async function appendToDrawing(
 		try {
 			placed = await stage(0, offsetY);
 		} catch (error) {
-			console.error("[canvas-drag-merge] 暂存内容失败", error);
-			throw new AppendStepError(
-				"无法把源内容渲染成图纸元素（该文件可能不是有效的 Excalidraw 图纸或笔记）",
+			console.error(
+				`[canvas-drag-merge] ${t("log.stageContentFailed")}`,
 				error
 			);
+			throw new AppendStepError(t("error.stageStepFailed"), error);
 		}
 		if (placed === 0) {
-			throw new DrawingFailedError("没有可加入图纸的内容。");
+			throw new DrawingFailedError(t("detail.nothingToAppend"));
 		}
 
 		// ---- 2. build a superset drawing from the target as template ------
@@ -471,20 +475,21 @@ export async function appendToDrawing(
 				silent: true,
 			});
 		} catch (error) {
-			console.error("[canvas-drag-merge] 创建临时图纸失败", error);
-			throw new AppendStepError("创建临时图纸失败", error);
+			console.error(
+				`[canvas-drag-merge] ${t("log.createTempDrawingFailed")}`,
+				error
+			);
+			throw new AppendStepError(t("error.createTempDrawingStep"), error);
 		}
 		if (typeof createdPath !== "string" || createdPath.length === 0) {
-			throw new ExcalidrawUnavailableError(
-				"Excalidraw 未返回临时图纸路径。"
-			);
+			throw new ExcalidrawUnavailableError(t("error.noTempDrawingPath"));
 		}
 
 		// ---- 3. wait for it to land on disk -------------------------------
 		const tempFile = await waitForVaultFile(app, createdPath);
 		if (!tempFile) {
 			throw new ExcalidrawUnavailableError(
-				`临时图纸未生成：${createdPath}`
+				t("error.tempDrawingMissing", { path: createdPath })
 			);
 		}
 
@@ -493,9 +498,12 @@ export async function appendToDrawing(
 			const content = await app.vault.read(tempFile);
 			await app.vault.modify(targetFile, content);
 		} catch (error) {
-			console.error("[canvas-drag-merge] 写回原图纸失败", error);
+			console.error(
+				`[canvas-drag-merge] ${t("log.writeBackDrawingFailed")}`,
+				error
+			);
 			throw new AppendStepError(
-				`写回原图纸失败（临时文件 ${tempFile.path} 已保留，可手动检查）`,
+				t("error.writeBackStepFailed", { path: tempFile.path }),
 				error
 			);
 		} finally {
@@ -503,7 +511,7 @@ export async function appendToDrawing(
 				await app.vault.delete(tempFile);
 			} catch (error) {
 				console.error(
-					"[canvas-drag-merge] 临时图纸删除失败，请手动清理：",
+					`[canvas-drag-merge] ${t("log.deleteTempDrawingFailed")}`,
 					tempFile.path,
 					error
 				);
@@ -513,9 +521,7 @@ export async function appendToDrawing(
 		ea.clear();
 	}
 
-	return wasOpen
-		? "（该图纸当前处于打开状态，请重新打开它以看到改动）"
-		: "";
+	return wasOpen ? t("detail.drawingOpenHint") : "";
 }
 
 /**
@@ -605,7 +611,7 @@ export async function createDrawingFromImages(
 		}
 
 		if (placed === 0) {
-			throw new DrawingFailedError("没有任何图片能被放入图纸。");
+			throw new DrawingFailedError(t("error.noImagePlaced"));
 		}
 
 		await ensureFolder(app, folder ?? "");
@@ -620,7 +626,7 @@ export async function createDrawingFromImages(
 		const file = await waitForVaultFile(app, createdPath);
 		if (!file) {
 			throw new ExcalidrawUnavailableError(
-				`Excalidraw 未能在预期时间内创建文件：${createdPath}`
+				t("error.drawingNotCreated", { path: createdPath })
 			);
 		}
 		return file.path;

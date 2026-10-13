@@ -8,6 +8,7 @@
  */
 
 import type { CanvasNodeData } from "./types";
+import { t, type MessageKey } from "./i18n";
 
 /** The categories the merge rules dispatch on. */
 export type NodeKind = "text" | "image" | "note" | "drawing" | "other";
@@ -27,13 +28,19 @@ const IMAGE_EXTENSIONS = new Set([
 /** Extensions treated as Markdown notes. */
 const NOTE_EXTENSIONS = new Set(["md"]);
 
-/** Human-readable labels, for Notices and logs. */
-const KIND_LABELS: Record<NodeKind, string> = {
-	text: "文本卡片",
-	image: "图片",
-	note: "md 笔记",
-	drawing: "Excalidraw 图纸",
-	other: "其他节点",
+/**
+ * Keys of the human-readable kind labels, for Notices and logs.
+ *
+ * Only keys are held here, never text: a module-level `t()` call would be
+ * evaluated at import time, before settings -- and therefore the language --
+ * have been loaded.
+ */
+const KIND_LABEL_KEYS: Record<NodeKind, MessageKey> = {
+	text: "kind.text",
+	image: "kind.image",
+	note: "kind.note",
+	drawing: "kind.drawing",
+	other: "kind.other",
 };
 
 /**
@@ -209,10 +216,10 @@ export function classifyNode(
  * Localised label for a node kind, for user-facing messages.
  *
  * @param kind - The node kind.
- * @returns A short Chinese label.
+ * @returns A short label in the current language.
  */
 export function kindLabel(kind: NodeKind): string {
-	return KIND_LABELS[kind];
+	return t(KIND_LABEL_KEYS[kind]);
 }
 
 /**
@@ -231,17 +238,32 @@ export type MergeAction =
 	| "append-to-drawing"
 	| "nothing";
 
-/** User-facing description of each action, shared by Notices and highlights. */
-export const ACTION_LABELS: Record<MergeAction, string> = {
-	"copy-text-to-card": "把文本合并进这张卡片",
-	"insert-image-into-card": "把图片插入这张卡片",
-	"insert-card-link": "把文件以链接插入这张卡片",
-	"append-to-note": "把内容追加到这则笔记",
-	"append-note-to-note": "把这则笔记的正文追加过去",
-	"merge-images-into-excalidraw": "两张图片合并为一个 Excalidraw 文件",
-	"append-to-drawing": "把内容加入这则图纸的画布",
-	nothing: "什么都不做",
+/**
+ * Keys of the user-facing description of each action.
+ *
+ * Shared by Notices and drag-time highlights. Keys only, for the same reason as
+ * {@link KIND_LABEL_KEYS}: text must be resolved after the language is known.
+ */
+const ACTION_LABEL_KEYS: Record<MergeAction, MessageKey> = {
+	"copy-text-to-card": "action.copy-text-to-card",
+	"insert-image-into-card": "action.insert-image-into-card",
+	"insert-card-link": "action.insert-card-link",
+	"append-to-note": "action.append-to-note",
+	"append-note-to-note": "action.append-note-to-note",
+	"merge-images-into-excalidraw": "action.merge-images-into-excalidraw",
+	"append-to-drawing": "action.append-to-drawing",
+	nothing: "action.nothing",
 };
+
+/**
+ * Label shown for an action, in the current language.
+ *
+ * @param action - The resolved merge action.
+ * @returns A short description of what the merge will do.
+ */
+export function actionLabel(action: MergeAction): string {
+	return t(ACTION_LABEL_KEYS[action]);
+}
 
 /**
  * Actions that consume **both** nodes, not just the dragged one.
