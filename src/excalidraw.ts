@@ -604,7 +604,14 @@ export async function createDrawingFromImages(
 
 			const x = Math.round(node.x - bounds.minX);
 			const y = Math.round(node.y - bounds.minY);
-			const elementId = await ea.addImage(x, y, file, false, true);
+			// `anchor` must stay FALSE. Passing true makes Excalidraw append
+			// `|100%` to the stored file reference, which marks the element
+			// `customData.isAnchored` -- and the Excalidraw plugin's own comment
+			// on that flag reads "used by the Excalidraw component to disable
+			// resizing of anchored images". Its `scaleLoadedImage()` also snaps
+			// an anchored element back to the image's natural pixel size on
+			// every load, discarding the fit applied just below.
+			const elementId = await ea.addImage(x, y, file, false, false);
 			if (!elementId) continue;
 			fitElementToBox(ea, elementId, node.width, node.height);
 			placed += 1;

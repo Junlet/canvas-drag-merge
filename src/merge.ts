@@ -150,11 +150,14 @@ async function stageNodeIntoDrawing(
 		);
 	}
 
-	// `anchor` mirrors the plugin's own insertMarkdownImage(): a rasterised
-	// note or drawing already has the size its render settings asked for, so it
-	// needs no `|100%` annotation.
-	const anchor = kind === "image";
-	const elementId = await ea.addImage(offsetX, offsetY, file, false, anchor);
+	// `anchor` must stay FALSE. It used to be true for plain images, mirroring
+	// the Excalidraw plugin's insert dialog; that made Excalidraw append
+	// `|100%` to the stored file reference, which marks the element
+	// `customData.isAnchored` -- documented in the Excalidraw plugin itself as
+	// "used by the Excalidraw component to disable resizing of anchored
+	// images". Its `scaleLoadedImage()` also resets an anchored element to the
+	// image's natural pixel size on every load.
+	const elementId = await ea.addImage(offsetX, offsetY, file, false, false);
 	if (!elementId) {
 		throw new DrawingFailedError(
 			t("error.cannotRenderImage", { name: file.name })

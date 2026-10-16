@@ -1000,7 +1000,7 @@ async function createDrawingFromImages(app, bridge, nodes, baseName, folder) {
       if (!file2) continue;
       const x = Math.round(node.x - bounds.minX);
       const y = Math.round(node.y - bounds.minY);
-      const elementId = await ea.addImage(x, y, file2, false, true);
+      const elementId = await ea.addImage(x, y, file2, false, false);
       if (!elementId) continue;
       fitElementToBox(ea, elementId, node.width, node.height);
       placed += 1;
@@ -1074,8 +1074,7 @@ async function stageNodeIntoDrawing(app, ea, source, kind, offsetX, offsetY, emb
       file.path
     );
   }
-  const anchor = kind === "image";
-  const elementId = await ea.addImage(offsetX, offsetY, file, false, anchor);
+  const elementId = await ea.addImage(offsetX, offsetY, file, false, false);
   if (!elementId) {
     throw new DrawingFailedError(
       t("error.cannotRenderImage", { name: file.name })
