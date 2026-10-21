@@ -77,6 +77,8 @@ var zh = {
   "settings.folder.previewInherited": "（沿用 Excalidraw 插件设置里的目录）",
   "settings.month.name": "按月分文件夹",
   "settings.month.desc": "开启后，会在上面的路径下再建一个 `YYYY-MM` 文件夹，让每个月的图纸归到一起。当前将会保存到：{path}",
+  "settings.imageScale.name": "图片插入尺寸（%）",
+  "settings.imageScale.desc": "100% = 与图片在画布上占用的大小一致。只在**新建图纸**时生效（把图片合并成一张新图纸）；往里追加到已有图纸时用源节点自己的尺寸。图片以左上角为基准放大，调大后可能与旁边的元素重叠。另外：如果新图纸里只有这一张图，放大后看不出区别 ——Excalidraw 打开时会自动缩放到适应内容。",
   "settings.triggerKey.name": "触发键",
   "settings.triggerKey.desc": "用来开启合并模式的按键组合。默认推荐 Ctrl+Shift+M：不会和任何现有快捷键冲突，输入法也不会占用它。（Alt / Ctrl / Shift 单独作为触发键已被移除——它们在画布里本来就有拖拽修饰的用途，会互相打架。）",
   "settings.triggerKey.option.ctrlShiftM": "Ctrl + Shift + M（推荐，无冲突）",
@@ -225,6 +227,8 @@ var en = {
   "settings.folder.previewInherited": "(inherits the Excalidraw plugin's own folder setting)",
   "settings.month.name": "Group by month in sub-folders",
   "settings.month.desc": "When on, a `YYYY-MM` folder is created inside the path above so each month's drawings collect together. They will currently be saved to: {path}",
+  "settings.imageScale.name": "Image insertion size (%)",
+  "settings.imageScale.desc": "100% = the size the image took up on the Canvas. Applies only when a new drawing is created (merging images into one); appending to an existing drawing keeps the source node's own size. Images grow from their top-left corner, so a larger size can overlap neighbouring elements. And if the new drawing holds only that one image, enlarging it makes no visible difference -- Excalidraw zooms to fit when the drawing is opened.",
   "settings.triggerKey.name": "Trigger key",
   "settings.triggerKey.desc": "The key combination that arms merge mode. Ctrl+Shift+M is recommended by default: it conflicts with no existing shortcut and no IME claims it. (Alt / Ctrl / Shift on their own were removed as triggers -- Canvas already uses them to modify a drag, so the two would fight.)",
   "settings.triggerKey.option.ctrlShiftM": "Ctrl + Shift + M (recommended, no conflict)",
@@ -753,6 +757,27 @@ function resolveUniqueBaseName(baseName, isTaken) {
   return `${baseName} ${Date.now()}`;
 }
 
+// src/sizing.ts
+var IMAGE_SCALE_MIN = 25;
+var IMAGE_SCALE_MAX = 400;
+var IMAGE_SCALE_STEP = 5;
+var DEFAULT_IMAGE_SCALE = 100;
+function normalizeImageScale(value) {
+  const numeric = typeof value === "number" && Number.isFinite(value) ? value : DEFAULT_IMAGE_SCALE;
+  return Math.min(
+    IMAGE_SCALE_MAX,
+    Math.max(IMAGE_SCALE_MIN, Math.round(numeric))
+  );
+}
+function fitSize(naturalWidth, naturalHeight, boxWidth, boxHeight, scale) {
+  if (!(naturalWidth > 0) || !(naturalHeight > 0)) return null;
+  if (!(boxWidth > 0) || !(boxHeight > 0)) return null;
+  let ratio = Math.min(boxWidth / naturalWidth, boxHeight / naturalHeight);
+  ratio *= scale > 0 ? scale : 1;
+  if (!Number.isFinite(ratio) || ratio <= 0) return null;
+  return { width: naturalWidth * ratio, height: naturalHeight * ratio };
+}
+
 // src/excalidraw.ts
 var EXCALIDRAW_PLUGIN_ID = "obsidian-excalidraw-plugin";
 var FILE_WAIT_TIMEOUT_MS = 5e3;
@@ -847,17 +872,19 @@ function resolveVaultFile(app, vaultPath, sourcePath = "") {
   if (direct) return direct;
   return app.metadataCache.getFirstLinkpathDest(vaultPath, sourcePath);
 }
-function fitElementToBox(ea, elementId, boxWidth, boxHeight) {
+function fitElementToBox(ea, elementId, boxWidth, boxHeight, scale) {
   const element = ea.getElement(elementId);
   if (!element) return;
-  const naturalWidth = Number(element.width);
-  const naturalHeight = Number(element.height);
-  if (!(naturalWidth > 0) || !(naturalHeight > 0)) return;
-  if (!(boxWidth > 0) || !(boxHeight > 0)) return;
-  const ratio = Math.min(boxWidth / naturalWidth, boxHeight / naturalHeight);
-  if (!Number.isFinite(ratio) || ratio <= 0) return;
-  element.width = naturalWidth * ratio;
-  element.height = naturalHeight * ratio;
+  const fitted = fitSize(
+    Number(element.width),
+    Number(element.height),
+    boxWidth,
+    boxHeight,
+    scale
+  );
+  if (!fitted) return;
+  element.width = fitted.width;
+  element.height = fitted.height;
 }
 var APPEND_GAP = 80;
 function isDrawingOpen(app, path) {
@@ -988,7 +1015,7 @@ function boundsOf(nodes) {
   }
   return { minX, minY, maxX, maxY };
 }
-async function createDrawingFromImages(app, bridge, nodes, baseName, folder) {
+async function createDrawingFromImages(app, bridge, nodes, baseName, folder, imageScalePercent) {
   const { ea } = bridge;
   const bounds = boundsOf(nodes);
   let placed = 0;
@@ -1002,7 +1029,13 @@ async function createDrawingFromImages(app, bridge, nodes, baseName, folder) {
       const y = Math.round(node.y - bounds.minY);
       const elementId = await ea.addImage(x, y, file2, false, false);
       if (!elementId) continue;
-      fitElementToBox(ea, elementId, node.width, node.height);
+      fitElementToBox(
+        ea,
+        elementId,
+        node.width,
+        node.height,
+        imageScalePercent / 100
+      );
       placed += 1;
     }
     if (placed === 0) {
@@ -1317,7 +1350,8 @@ async function executeMerge(context, source, target, action, sourceKind, targetK
         context.excalidraw,
         pair,
         uniqueName,
-        context.drawingFolder
+        context.drawingFolder,
+        context.imageScalePercent
       );
       const removed = /* @__PURE__ */ new Set([source.id, target.id]);
       const bounds = {
@@ -1500,6 +1534,7 @@ var DEFAULT_SETTINGS = {
   drawingEmbedMode: DEFAULT_DRAWING_EMBED_MODE,
   drawingFolder: DEFAULT_DRAWING_FOLDER,
   monthSubfolders: DEFAULT_MONTH_SUBFOLDERS,
+  imageScale: DEFAULT_IMAGE_SCALE,
   cardLinkEmbedded: DEFAULT_CARD_LINK_EMBEDDED,
   language: DEFAULT_LANGUAGE
 };
@@ -1535,6 +1570,7 @@ function normalizeSettings(stored) {
   if (typeof merged.monthSubfolders !== "boolean") {
     merged.monthSubfolders = DEFAULT_SETTINGS.monthSubfolders;
   }
+  merged.imageScale = normalizeImageScale(merged.imageScale);
   if (typeof merged.cardLinkEmbedded !== "boolean") {
     merged.cardLinkEmbedded = DEFAULT_SETTINGS.cardLinkEmbedded;
   }
@@ -1605,6 +1641,16 @@ var CanvasDragMergeSettingTab = class extends import_obsidian.PluginSettingTab {
       });
     });
     this.renderFolderSettings(containerEl);
+    new import_obsidian.Setting(containerEl).setName(t("settings.imageScale.name")).setDesc(t("settings.imageScale.desc")).addSlider(
+      (slider) => slider.setLimits(
+        IMAGE_SCALE_MIN,
+        IMAGE_SCALE_MAX,
+        IMAGE_SCALE_STEP
+      ).setValue(this.plugin.settings.imageScale).setDynamicTooltip().onChange(async (value) => {
+        this.plugin.settings.imageScale = normalizeImageScale(value);
+        await this.plugin.saveSettings();
+      })
+    );
     new import_obsidian.Setting(containerEl).setName(t("settings.triggerKey.name")).setDesc(t("settings.triggerKey.desc")).addDropdown((dropdown) => {
       for (const option of triggerKeyOptions()) {
         dropdown.addOption(option.value, option.label);
@@ -2036,6 +2082,7 @@ var CanvasDragMergePlugin = class extends import_obsidian2.Plugin {
         this.settings.monthSubfolders
       ) : void 0,
       drawingEmbedMode: this.settings.drawingEmbedMode,
+      imageScalePercent: this.settings.imageScale,
       createNodeId: (taken) => createNodeId(taken)
     };
     const summaries = [];

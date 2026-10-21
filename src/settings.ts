@@ -24,6 +24,13 @@ import {
 	resolveDrawingFolder,
 } from "./folders";
 import {
+	DEFAULT_IMAGE_SCALE,
+	IMAGE_SCALE_MAX,
+	IMAGE_SCALE_MIN,
+	IMAGE_SCALE_STEP,
+	normalizeImageScale,
+} from "./sizing";
+import {
 	isLanguageSetting,
 	setLanguage,
 	t,
@@ -87,6 +94,14 @@ export interface CanvasDragMergeSettings {
 	drawingFolder: string;
 	/** Whether a `YYYY-MM` sub-folder is appended to {@link drawingFolder}. */
 	monthSubfolders: boolean;
+	/**
+	 * Insertion size for images in a newly created drawing, in percent.
+	 *
+	 * `100` keeps each image at the size of the Canvas node it came from. Only
+	 * applies when a drawing is created -- appending into an existing drawing
+	 * uses the source node's own size.
+	 */
+	imageScale: number;
 	/**
 	 * Whether a note or drawing dropped on a text card is written as a
 	 * transclusion (`![[file]]`) rather than a plain link (`[[file]]`).
@@ -178,6 +193,7 @@ export const DEFAULT_SETTINGS: CanvasDragMergeSettings = {
 	drawingEmbedMode: DEFAULT_DRAWING_EMBED_MODE,
 	drawingFolder: DEFAULT_DRAWING_FOLDER,
 	monthSubfolders: DEFAULT_MONTH_SUBFOLDERS,
+	imageScale: DEFAULT_IMAGE_SCALE,
 	cardLinkEmbedded: DEFAULT_CARD_LINK_EMBEDDED,
 	language: DEFAULT_LANGUAGE,
 };
@@ -222,6 +238,7 @@ export function normalizeSettings(
 	if (typeof merged.monthSubfolders !== "boolean") {
 		merged.monthSubfolders = DEFAULT_SETTINGS.monthSubfolders;
 	}
+	merged.imageScale = normalizeImageScale(merged.imageScale);
 	if (typeof merged.cardLinkEmbedded !== "boolean") {
 		merged.cardLinkEmbedded = DEFAULT_SETTINGS.cardLinkEmbedded;
 	}
@@ -324,6 +341,25 @@ export class CanvasDragMergeSettingTab extends PluginSettingTab {
 			});
 
 		this.renderFolderSettings(containerEl);
+
+		new Setting(containerEl)
+			.setName(t("settings.imageScale.name"))
+			.setDesc(t("settings.imageScale.desc"))
+			.addSlider((slider) =>
+				slider
+					.setLimits(
+						IMAGE_SCALE_MIN,
+						IMAGE_SCALE_MAX,
+						IMAGE_SCALE_STEP
+					)
+					.setValue(this.plugin.settings.imageScale)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.imageScale =
+							normalizeImageScale(value);
+						await this.plugin.saveSettings();
+					})
+			);
 
 		new Setting(containerEl)
 			.setName(t("settings.triggerKey.name"))

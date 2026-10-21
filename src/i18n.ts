@@ -108,6 +108,14 @@ const zh = {
 		"让每个月的图纸归到一起。" +
 		"当前将会保存到：{path}",
 
+	"settings.imageScale.name": "图片插入尺寸（%）",
+	"settings.imageScale.desc":
+		"100% = 与图片在画布上占用的大小一致。只在**新建图纸**时生效" +
+		"（把图片合并成一张新图纸）；往里追加到已有图纸时用源节点自己的尺寸。" +
+		"图片以左上角为基准放大，调大后可能与旁边的元素重叠。" +
+		"另外：如果新图纸里只有这一张图，放大后看不出区别 ——" +
+		"Excalidraw 打开时会自动缩放到适应内容。",
+
 	"settings.triggerKey.name": "触发键",
 	"settings.triggerKey.desc":
 		"用来开启合并模式的按键组合。默认推荐 Ctrl+Shift+M：" +
@@ -348,6 +356,16 @@ const en: Record<MessageKey, string> = {
 		"When on, a `YYYY-MM` folder is created inside the path above so each " +
 		"month's drawings collect together. " +
 		"They will currently be saved to: {path}",
+
+	"settings.imageScale.name": "Image insertion size (%)",
+	"settings.imageScale.desc":
+		"100% = the size the image took up on the Canvas. Applies only when a " +
+		"new drawing is created (merging images into one); appending to an " +
+		"existing drawing keeps the source node's own size. Images grow from " +
+		"their top-left corner, so a larger size can overlap neighbouring " +
+		"elements. And if the new drawing holds only that one image, enlarging " +
+		"it makes no visible difference -- Excalidraw zooms to fit when the " +
+		"drawing is opened.",
 
 	"settings.triggerKey.name": "Trigger key",
 	"settings.triggerKey.desc":

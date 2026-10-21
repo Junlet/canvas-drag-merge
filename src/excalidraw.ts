@@ -14,6 +14,7 @@
 
 import type { App, TFile } from "obsidian";
 import type { CanvasNodeData } from "./types";
+import { fitSize } from "./sizing";
 import { t } from "./i18n";
 
 /** Folder/id of the Excalidraw plugin in Obsidian's plugin registry. */
@@ -319,32 +320,34 @@ export function resolveVaultFile(
 /**
  * Rescales a staged image element to fit the Canvas node's box.
  *
- * `addImage(..., scale = false)` stages the image at natural pixel size, so the
- * element's current `width`/`height` *are* the natural dimensions. Fitting them
- * into the node's box preserves the aspect ratio rather than stretching.
+ * The maths lives in `sizing.ts`, where it can be tested without Obsidian: fit
+ * the aspect ratio into the node's box, then apply the user's insertion size.
  *
  * @param ea - The ExcalidrawAutomate instance.
  * @param elementId - Id returned by `addImage`.
  * @param boxWidth - Target width, from the Canvas node.
  * @param boxHeight - Target height, from the Canvas node.
+ * @param scale - Insertion-size multiplier from the settings.
  */
 function fitElementToBox(
 	ea: ExcalidrawAutomateLike,
 	elementId: string,
 	boxWidth: number,
-	boxHeight: number
+	boxHeight: number,
+	scale: number
 ): void {
 	const element = ea.getElement(elementId);
 	if (!element) return;
-	const naturalWidth = Number(element.width);
-	const naturalHeight = Number(element.height);
-	if (!(naturalWidth > 0) || !(naturalHeight > 0)) return;
-	if (!(boxWidth > 0) || !(boxHeight > 0)) return;
-
-	const ratio = Math.min(boxWidth / naturalWidth, boxHeight / naturalHeight);
-	if (!Number.isFinite(ratio) || ratio <= 0) return;
-	element.width = naturalWidth * ratio;
-	element.height = naturalHeight * ratio;
+	const fitted = fitSize(
+		Number(element.width),
+		Number(element.height),
+		boxWidth,
+		boxHeight,
+		scale
+	);
+	if (!fitted) return;
+	element.width = fitted.width;
+	element.height = fitted.height;
 }
 
 /** Vertical gap between existing content and appended content. */
@@ -580,6 +583,7 @@ function boundsOf(nodes: CanvasNodeData[]): {
  * @param nodes - Image nodes to place.
  * @param baseName - Collision-free base name (no extension).
  * @param folder - Destination folder, or undefined for Excalidraw's default.
+ * @param imageScalePercent - Insertion size for the images, in percent.
  * @returns The created drawing's vault path.
  * @throws {DrawingFailedError} When no image could be placed.
  * @throws {ExcalidrawUnavailableError} When the file never materialises.
@@ -589,7 +593,8 @@ export async function createDrawingFromImages(
 	bridge: ExcalidrawBridge,
 	nodes: CanvasNodeData[],
 	baseName: string,
-	folder: string | undefined
+	folder: string | undefined,
+	imageScalePercent: number
 ): Promise<string> {
 	const { ea } = bridge;
 	const bounds = boundsOf(nodes);
@@ -613,7 +618,13 @@ export async function createDrawingFromImages(
 			// every load, discarding the fit applied just below.
 			const elementId = await ea.addImage(x, y, file, false, false);
 			if (!elementId) continue;
-			fitElementToBox(ea, elementId, node.width, node.height);
+			fitElementToBox(
+				ea,
+				elementId,
+				node.width,
+				node.height,
+				imageScalePercent / 100
+			);
 			placed += 1;
 		}
 

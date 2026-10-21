@@ -542,6 +542,7 @@ export default class CanvasDragMergePlugin extends Plugin {
 					)
 				: undefined,
 			drawingEmbedMode: this.settings.drawingEmbedMode,
+			imageScalePercent: this.settings.imageScale,
 			createNodeId: (taken) => createNodeId(taken),
 		};
 

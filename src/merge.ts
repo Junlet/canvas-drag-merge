@@ -183,6 +183,8 @@ export interface MergeContext {
 	excalidraw: ExcalidrawBridge | null;
 	/** Destination folder for newly created drawings. */
 	drawingFolder: string | undefined;
+	/** Insertion size for images in a newly created drawing, in percent. */
+	imageScalePercent: number;
 	/** Image snapshot or interactive embed, when adding files to a drawing. */
 	drawingEmbedMode: DrawingEmbedMode;
 	/** Mints an id for a node inserted back into the Canvas. */
@@ -530,7 +532,8 @@ export async function executeMerge(
 				context.excalidraw,
 				pair,
 				uniqueName,
-				context.drawingFolder
+				context.drawingFolder,
+				context.imageScalePercent
 			);
 
 			// Both pictures are replaced by a single node pointing at the drawing.
