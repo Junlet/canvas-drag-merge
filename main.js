@@ -1725,6 +1725,73 @@ var CanvasDragMergeSettingTab = class extends import_obsidian.PluginSettingTab {
   }
 };
 
+// src/canvasflush.ts
+var FLUSH_ATTEMPTS = 12;
+var FLUSH_INTERVAL_MS = 150;
+function defaultSleep(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+async function waitForWrite(target, file, marker, baseline, sleep) {
+  for (let attempt = 0; attempt <= FLUSH_ATTEMPTS; attempt += 1) {
+    try {
+      const text = await target.vault.read(file);
+      if (marker ? text.includes(marker) : baseline !== null && text !== baseline) {
+        return true;
+      }
+    } catch (e) {
+    }
+    if (attempt === FLUSH_ATTEMPTS) break;
+    await sleep(FLUSH_INTERVAL_MS);
+  }
+  return false;
+}
+async function flushCanvas(target, marker, sleep = defaultSleep) {
+  const view = target.view;
+  if (!view) return false;
+  const file = view.file;
+  let baseline = null;
+  if (file) {
+    try {
+      baseline = await target.vault.read(file);
+    } catch (e) {
+      baseline = null;
+    }
+  }
+  if (typeof view.saveImmediately === "function") {
+    try {
+      await view.saveImmediately();
+    } catch (error) {
+      console.error(
+        target.logPrefix + "Canvas saveImmediately() failed",
+        error
+      );
+    }
+  }
+  if (!file) return false;
+  if (await waitForWrite(target, file, marker, baseline, sleep)) return true;
+  const payload = typeof view.getViewData === "function" ? view.getViewData() : null;
+  if (typeof payload !== "string") {
+    console.warn(
+      target.logPrefix + "Canvas change could not be confirmed on disk, and the view exposes no serialisation to fall back on."
+    );
+    return false;
+  }
+  try {
+    await target.vault.modify(file, payload);
+  } catch (error) {
+    console.error(
+      target.logPrefix + "Canvas fallback write failed",
+      error
+    );
+    return false;
+  }
+  if (await waitForWrite(target, file, marker, baseline, sleep)) return true;
+  console.warn(
+    target.logPrefix + "Canvas change still not visible on disk after a fallback write."
+  );
+  return false;
+}
+
 // src/main.ts
 var NOTICE_DURATION_MS = 8e3;
 var POST_DRAG_DELAY_MS = 0;
@@ -2063,8 +2130,9 @@ var CanvasDragMergePlugin = class extends import_obsidian2.Plugin {
    * @param overlaps - Detected (dragged, target, area) triples.
    */
   async applyMerges(canvas, data, overlaps) {
-    var _a;
+    var _a, _b;
     const bridge = this.acquireBridge();
+    const idsBefore = new Set(data.nodes.map((node) => node.id));
     const context = {
       app: this.app,
       data,
@@ -2144,19 +2212,33 @@ var CanvasDragMergePlugin = class extends import_obsidian2.Plugin {
     } else if (consumed.size > 0) {
       summaries.push(t("summary.sourceKept"));
     }
-    if (canvasChanged) await this.writeCanvas(canvas, data);
+    if (canvasChanged) {
+      const marker = (_b = data.nodes.find(
+        (node) => !idsBefore.has(node.id)
+      )) == null ? void 0 : _b.id;
+      await this.writeCanvas(canvas, data, marker);
+    }
     const message = summaries.join(t("summary.separator"));
     console.log(`[canvas-drag-merge] ${t("log.mergeDone")}`, message);
     new import_obsidian2.Notice(`✅ ${message}`, NOTICE_DURATION_MS);
     if (this.settings.triggerMode === "toggle") this.disarmMode();
   }
   /**
-   * Writes a Canvas document back and persists it.
+   * Writes a Canvas document back, then makes sure the file really changed.
+   *
+   * `requestSave()` alone is not enough: Obsidian's Canvas view saves on a
+   * 2-second debounce and `requestSave()` returns before anything is written,
+   * so awaiting it proves nothing and nothing that watches the vault (sync,
+   * backup) sees the merge until a later save flushes it. See
+   * `canvasflush.ts`.
    *
    * @param canvas - The Canvas instance.
    * @param data - The document to write.
+   * @param marker - Id of the node this merge inserted, used as proof that the
+   *   write reached disk. Omitted when the merge inserted nothing.
    */
-  async writeCanvas(canvas, data) {
+  async writeCanvas(canvas, data, marker) {
+    var _a;
     if (typeof canvas.setData !== "function") {
       throw new CanvasUnavailableError(t("error.canvasNoSetData"));
     }
@@ -2164,6 +2246,14 @@ var CanvasDragMergePlugin = class extends import_obsidian2.Plugin {
     if (typeof canvas.requestSave === "function") {
       await canvas.requestSave();
     }
+    await flushCanvas(
+      {
+        view: (_a = canvas.view) != null ? _a : null,
+        vault: this.app.vault,
+        logPrefix: "[canvas-drag-merge] "
+      },
+      marker
+    );
   }
   // -- helpers -----------------------------------------------------------
   /**

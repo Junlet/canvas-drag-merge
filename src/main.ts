@@ -86,6 +86,7 @@ import {
 	type CanvasDragMergeSettings,
 } from "./settings";
 import { setLanguage, t } from "./i18n";
+import { flushCanvas, type CanvasViewLike } from "./canvasflush";
 
 /** How long to keep result Notices on screen. */
 const NOTICE_DURATION_MS = 8000;
@@ -520,6 +521,9 @@ export default class CanvasDragMergePlugin extends Plugin {
 		overlaps: ReturnType<typeof findBestOverlaps>
 	): Promise<void> {
 		const bridge = this.acquireBridge();
+		// Snapshot before the merges mutate `data` in place, so the node this run
+		// inserts can be identified afterwards and used as proof of the write.
+		const idsBefore = new Set(data.nodes.map((node) => node.id));
 		const context: MergeContext = {
 			app: this.app,
 			data,
@@ -616,7 +620,12 @@ export default class CanvasDragMergePlugin extends Plugin {
 			summaries.push(t("summary.sourceKept"));
 		}
 
-		if (canvasChanged) await this.writeCanvas(canvas, data);
+		if (canvasChanged) {
+			const marker = data.nodes.find(
+				(node) => !idsBefore.has(node.id)
+			)?.id;
+			await this.writeCanvas(canvas, data, marker);
+		}
 
 		const message = summaries.join(t("summary.separator"));
 		console.log(`[canvas-drag-merge] ${t("log.mergeDone")}`, message);
@@ -628,22 +637,41 @@ export default class CanvasDragMergePlugin extends Plugin {
 	}
 
 	/**
-	 * Writes a Canvas document back and persists it.
+	 * Writes a Canvas document back, then makes sure the file really changed.
+	 *
+	 * `requestSave()` alone is not enough: Obsidian's Canvas view saves on a
+	 * 2-second debounce and `requestSave()` returns before anything is written,
+	 * so awaiting it proves nothing and nothing that watches the vault (sync,
+	 * backup) sees the merge until a later save flushes it. See
+	 * `canvasflush.ts`.
 	 *
 	 * @param canvas - The Canvas instance.
 	 * @param data - The document to write.
+	 * @param marker - Id of the node this merge inserted, used as proof that the
+	 *   write reached disk. Omitted when the merge inserted nothing.
 	 */
 	private async writeCanvas(
 		canvas: CanvasLike,
-		data: CanvasData
+		data: CanvasData,
+		marker?: string
 	): Promise<void> {
 		if (typeof canvas.setData !== "function") {
 			throw new CanvasUnavailableError(t("error.canvasNoSetData"));
 		}
 		await canvas.setData(data);
 		if (typeof canvas.requestSave === "function") {
+			// Keeps Obsidian's dirty flag and undo history honest. Awaiting it
+			// only covers builds where it happens to return a promise.
 			await canvas.requestSave();
 		}
+		await flushCanvas(
+			{
+				view: (canvas.view ?? null) as CanvasViewLike | null,
+				vault: this.app.vault,
+				logPrefix: "[canvas-drag-merge] ",
+			},
+			marker
+		);
 	}
 
 	// -- helpers -----------------------------------------------------------
