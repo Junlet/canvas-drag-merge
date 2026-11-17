@@ -46,6 +46,7 @@ var zh = {
   "log.getApiFailed": "ExcalidrawAutomate.getAPI() 调用失败",
   "log.getSceneFailed": "getSceneFromFile() 失败，改在原点追加",
   "log.createFolderFailed": "创建文件夹时出错（可能已存在）：",
+  "log.embedSkipped": "卡片里嵌入的不是可用图片，已跳过：{path}",
   "log.stageContentFailed": "暂存内容失败",
   "log.createTempDrawingFailed": "创建临时图纸失败",
   "log.writeBackDrawingFailed": "写回原图纸失败",
@@ -79,6 +80,33 @@ var zh = {
   "settings.month.desc": "开启后，会在上面的路径下再建一个 `YYYY-MM` 文件夹，让每个月的图纸归到一起。当前将会保存到：{path}",
   "settings.imageScale.name": "图片插入尺寸（%）",
   "settings.imageScale.desc": "100% = 与图片在画布上占用的大小一致。只在**新建图纸**时生效（把图片合并成一张新图纸）；往里追加到已有图纸时用源节点自己的尺寸。图片以左上角为基准放大，调大后可能与旁边的元素重叠。另外：如果新图纸里只有这一张图，放大后看不出区别 ——Excalidraw 打开时会自动缩放到适应内容。",
+  "settings.sticky.name": "文本卡片转成便签（sticky note）",
+  "settings.sticky.desc": "打开后，合并进图纸的文本卡片会变成 Excalidraw 的便签：「一个带底色的卡片 + 自动适配大小的文字」。关闭则仍是普通文字元素。",
+  "settings.sticky.sizeMode.name": "便签尺寸",
+  "settings.sticky.sizeMode.desc": "「跟随画布卡片」= 与它在画布上占用的大小一致；「固定尺寸」= 所有便签同样大小。便签是定宽容器，文字放不下时 Excalidraw 会自动缩小字号。",
+  "settings.sticky.sizeMode.card": "跟随画布卡片尺寸",
+  "settings.sticky.sizeMode.fixed": "固定尺寸",
+  "settings.sticky.width.name": "便签宽度（px）",
+  "settings.sticky.width.desc": "仅在「固定尺寸」时生效。",
+  "settings.sticky.height.name": "便签高度（px）",
+  "settings.sticky.height.desc": "仅在「固定尺寸」时生效。",
+  "settings.sticky.fontSize.name": "便签字号",
+  "settings.sticky.fontSize.desc": "便签文字的最大字号。文字放不下时 Excalidraw 会自动缩小它。",
+  "settings.sticky.align.name": "便签文字对齐",
+  "settings.sticky.align.left": "左对齐",
+  "settings.sticky.align.center": "居中",
+  "settings.sticky.align.right": "右对齐",
+  "settings.sticky.background.name": "便签底色",
+  "settings.sticky.background.desc": "「跟随卡片颜色」取卡片预设色并调淡，避免饱和色压住文字；没设过颜色的卡片保持 Excalidraw 默认底色。",
+  "settings.sticky.background.follow": "跟随卡片颜色（淡色）",
+  "settings.sticky.background.custom": "自定义颜色",
+  "settings.sticky.background.keep": "保持默认（不改）",
+  "settings.sticky.color.name": "自定义便签底色",
+  "settings.cardEmbed.name": "文本卡片里的图片",
+  "settings.cardEmbed.desc": "文本卡片是 Markdown，可以内嵌图片（![[图片.png]]）。但 Excalidraw 的文字元素不解析 Markdown —— 不处理的话图纸里会直接出现「![[图片.png]]」这串字符。",
+  "settings.cardEmbed.image": "把图片放到卡片下方（推荐）",
+  "settings.cardEmbed.text": "只留文件名，不插图片",
+  "settings.cardEmbed.keep": "原样保留（会出现 Markdown 标记）",
   "settings.triggerKey.name": "触发键",
   "settings.triggerKey.desc": "用来开启合并模式的按键组合。默认推荐 Ctrl+Shift+M：不会和任何现有快捷键冲突，输入法也不会占用它。（Alt / Ctrl / Shift 单独作为触发键已被移除——它们在画布里本来就有拖拽修饰的用途，会互相打架。）",
   "settings.triggerKey.option.ctrlShiftM": "Ctrl + Shift + M（推荐，无冲突）",
@@ -189,6 +217,7 @@ var en = {
   "log.mergeDone": "merge finished",
   "log.isExcalidrawFileFailed": "isExcalidrawFile() threw; falling back to the metadata check",
   "log.readMetadataFailed": "could not read the file's metadata",
+  "log.embedSkipped": "the embed inside the card is not a usable picture, skipped: {path}",
   "log.keydown": 'keydown key="{key}" ctrl={ctrl} alt={alt} shift={shift} meta={meta} repeat={repeat}',
   "log.keyup": 'keyup key="{key}" code="{code}"',
   "log.stagingIntoDrawing": "staging {kind} into the drawing as {form}: {path}",
@@ -229,6 +258,33 @@ var en = {
   "settings.month.desc": "When on, a `YYYY-MM` folder is created inside the path above so each month's drawings collect together. They will currently be saved to: {path}",
   "settings.imageScale.name": "Image insertion size (%)",
   "settings.imageScale.desc": "100% = the size the image took up on the Canvas. Applies only when a new drawing is created (merging images into one); appending to an existing drawing keeps the source node's own size. Images grow from their top-left corner, so a larger size can overlap neighbouring elements. And if the new drawing holds only that one image, enlarging it makes no visible difference -- Excalidraw zooms to fit when the drawing is opened.",
+  "settings.sticky.name": "Turn text cards into sticky notes",
+  "settings.sticky.desc": "When on, a text card merged into a drawing becomes an Excalidraw sticky note: a coloured card with text that fits itself. When off, the plugin keeps writing a plain text element.",
+  "settings.sticky.sizeMode.name": "Note size",
+  "settings.sticky.sizeMode.desc": '"Follow the Canvas card" keeps the size it had on the Canvas; "Fixed size" gives every note the same box. A note is a fixed-width container, so Excalidraw shrinks the text when it does not fit.',
+  "settings.sticky.sizeMode.card": "Follow the Canvas card",
+  "settings.sticky.sizeMode.fixed": "Fixed size",
+  "settings.sticky.width.name": "Note width (px)",
+  "settings.sticky.width.desc": 'Only used with "Fixed size".',
+  "settings.sticky.height.name": "Note height (px)",
+  "settings.sticky.height.desc": 'Only used with "Fixed size".',
+  "settings.sticky.fontSize.name": "Note font size",
+  "settings.sticky.fontSize.desc": "Maximum label size; Excalidraw shrinks it further when the text does not fit.",
+  "settings.sticky.align.name": "Note text alignment",
+  "settings.sticky.align.left": "Left",
+  "settings.sticky.align.center": "Center",
+  "settings.sticky.align.right": "Right",
+  "settings.sticky.background.name": "Note colour",
+  "settings.sticky.background.desc": `"Follow the card colour" takes the card's preset colour and lightens it, so a saturated colour cannot swallow the text. A card with no colour keeps Excalidraw's default fill.`,
+  "settings.sticky.background.follow": "Follow the card colour (lightened)",
+  "settings.sticky.background.custom": "Custom colour",
+  "settings.sticky.background.keep": "Leave as default",
+  "settings.sticky.color.name": "Custom note colour",
+  "settings.cardEmbed.name": "Pictures inside text cards",
+  "settings.cardEmbed.desc": 'A text card is Markdown, so it can embed pictures (![[picture.png]]). An Excalidraw text element does not render Markdown -- left alone, the drawing would literally show "![[picture.png]]".',
+  "settings.cardEmbed.image": "Place the picture below the card (recommended)",
+  "settings.cardEmbed.text": "Keep only the file name",
+  "settings.cardEmbed.keep": "Leave it as written (markers will show)",
   "settings.triggerKey.name": "Trigger key",
   "settings.triggerKey.desc": "The key combination that arms merge mode. Ctrl+Shift+M is recommended by default: it conflicts with no existing shortcut and no IME claims it. (Alt / Ctrl / Shift on their own were removed as triggers -- Canvas already uses them to modify a drag, so the two would fight.)",
   "settings.triggerKey.option.ctrlShiftM": "Ctrl + Shift + M (recommended, no conflict)",
@@ -780,6 +836,19 @@ function fitSize(naturalWidth, naturalHeight, boxWidth, boxHeight, scale) {
 
 // src/excalidraw.ts
 var EXCALIDRAW_PLUGIN_ID = "obsidian-excalidraw-plugin";
+var PICTURE_EXTENSIONS = /* @__PURE__ */ new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "webp",
+  "svg",
+  "bmp",
+  "avif"
+]);
+function isPictureFile(file) {
+  return PICTURE_EXTENSIONS.has((file.extension || "").toLowerCase());
+}
 var FILE_WAIT_TIMEOUT_MS = 5e3;
 var FILE_WAIT_INTERVAL_MS = 50;
 function getExcalidrawPlugin(app) {
@@ -1060,18 +1129,272 @@ async function createDrawingFromImages(app, bridge, nodes, baseName, folder, ima
   }
 }
 
+// src/cardcontent.ts
+var EMBED_MODES = ["keep", "text", "image"];
+function isEmbedMode(value) {
+  return typeof value === "string" && EMBED_MODES.includes(value);
+}
+var WIKI_EMBED_TRIM = /[ \t]*!\[\[([^\]]+)\]\]/gu;
+var WIKI_EMBED = /!\[\[([^\]]+)\]\]/gu;
+var MARKDOWN_EMBED_TRIM = /[ \t]*!\[([^\]]*)\]\(([^)]+)\)/gu;
+var MARKDOWN_EMBED = /!\[([^\]]*)\]\(([^)]+)\)/gu;
+var PATH_SEPARATOR = /[\\/]/u;
+var MARKDOWN_TITLE = /\s+["'][^"']*["']$/u;
+function stripMarkdownTitle(url) {
+  return url.replace(MARKDOWN_TITLE, "").trim();
+}
+function embedDisplayName(target) {
+  var _a, _b;
+  const withoutSubpath = target.split("#")[0].split("?")[0].trim();
+  if (withoutSubpath.length === 0) return "";
+  const segments = withoutSubpath.split(PATH_SEPARATOR);
+  return (_b = (_a = segments[segments.length - 1]) == null ? void 0 : _a.trim()) != null ? _b : "";
+}
+function wikiTarget(body) {
+  return body.split("|")[0].split("#")[0].trim();
+}
+function tidy(text) {
+  return text.replace(/\r\n/gu, "\n").replace(/\n{3,}/gu, "\n\n").trim();
+}
+function extractCardEmbeds(raw, mode) {
+  if (!isEmbedMode(mode) || mode === "keep") {
+    return { text: raw, targets: [] };
+  }
+  const targets = [];
+  const replaceWiki = (body) => {
+    if (mode === "image") {
+      const target = wikiTarget(body);
+      if (target.length > 0) targets.push(target);
+      return "";
+    }
+    const name = embedDisplayName(wikiTarget(body));
+    return name.length > 0 ? name : "";
+  };
+  const replaceMarkdown = (alt, url) => {
+    const bare = stripMarkdownTitle(url);
+    if (mode === "image") {
+      if (bare.length > 0) targets.push(bare);
+      return "";
+    }
+    const name = alt.trim() || embedDisplayName(bare);
+    return name.length > 0 ? name : "";
+  };
+  const wikiPattern = mode === "image" ? WIKI_EMBED_TRIM : WIKI_EMBED;
+  const markdownPattern = mode === "image" ? MARKDOWN_EMBED_TRIM : MARKDOWN_EMBED;
+  const text = raw.replace(wikiPattern, (_match, body) => replaceWiki(body)).replace(
+    markdownPattern,
+    (_match, alt, url) => replaceMarkdown(alt, url)
+  );
+  return { text: tidy(text), targets };
+}
+
+// src/colors.ts
+var CANVAS_COLOR_VARIABLE_PREFIX = "--canvas-color-";
+var CANVAS_PRESET_COUNT = 6;
+var FALLBACK_PALETTE = [
+  "#e93147",
+  "#ec7500",
+  "#e0ac00",
+  "#08b94e",
+  "#00bfbc",
+  "#7852ee"
+];
+function normalizePresetIndex(raw) {
+  const parsed = typeof raw === "number" ? raw : typeof raw === "string" ? Number.parseInt(raw, 10) : Number.NaN;
+  if (!Number.isInteger(parsed)) return null;
+  if (parsed < 1 || parsed > CANVAS_PRESET_COUNT) return null;
+  return parsed;
+}
+function resolveCanvasPresetColor(raw, doc) {
+  var _a, _b;
+  const preset = normalizePresetIndex(raw);
+  if (preset === null) return null;
+  const ownerDocument = doc != null ? doc : typeof document !== "undefined" ? document : void 0;
+  if (ownerDocument == null ? void 0 : ownerDocument.body) {
+    try {
+      const value = (_a = ownerDocument.defaultView) == null ? void 0 : _a.getComputedStyle(ownerDocument.body).getPropertyValue(`${CANVAS_COLOR_VARIABLE_PREFIX}${preset}`).trim();
+      if (value) return value;
+    } catch (error) {
+      console.error(
+        "[canvas-to-excalidraw] reading canvas colour variable failed",
+        error
+      );
+    }
+  }
+  return (_b = FALLBACK_PALETTE[preset - 1]) != null ? _b : null;
+}
+var HEX_COLOUR = /^#([0-9a-f]{3}|[0-9a-f]{6})$/iu;
+var RGB_COLOUR = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/iu;
+function hexPair(value) {
+  return Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, "0");
+}
+function lightenColour(colour, ratio) {
+  const trimmed = colour.trim();
+  let red;
+  let green;
+  let blue;
+  const hex = HEX_COLOUR.exec(trimmed);
+  const rgb = hex ? null : RGB_COLOUR.exec(trimmed);
+  if (hex) {
+    const digits = hex[1];
+    if (digits.length === 3) {
+      red = Number.parseInt(digits[0] + digits[0], 16);
+      green = Number.parseInt(digits[1] + digits[1], 16);
+      blue = Number.parseInt(digits[2] + digits[2], 16);
+    } else {
+      red = Number.parseInt(digits.slice(0, 2), 16);
+      green = Number.parseInt(digits.slice(2, 4), 16);
+      blue = Number.parseInt(digits.slice(4, 6), 16);
+    }
+  } else if (rgb) {
+    red = Number(rgb[1]);
+    green = Number(rgb[2]);
+    blue = Number(rgb[3]);
+  } else {
+    return null;
+  }
+  const amount = Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0;
+  const mix = (channel) => channel + (255 - channel) * amount;
+  return `#${hexPair(mix(red))}${hexPair(mix(green))}${hexPair(mix(blue))}`;
+}
+
+// src/sticky.ts
+var STICKY_SIZE_MODES = ["card", "fixed"];
+var STICKY_TEXT_ALIGNS = ["left", "center", "right"];
+var STICKY_BACKGROUND_MODES = ["follow", "custom", "keep"];
+var MIN_STICKY_WIDTH = 120;
+var MIN_STICKY_HEIGHT = 80;
+var FOLLOW_CARD_TINT = 0.78;
+function isStickySizeMode(value) {
+  return typeof value === "string" && STICKY_SIZE_MODES.includes(value);
+}
+function isStickyTextAlign(value) {
+  return typeof value === "string" && STICKY_TEXT_ALIGNS.includes(value);
+}
+function isStickyBackgroundMode(value) {
+  return typeof value === "string" && STICKY_BACKGROUND_MODES.includes(value);
+}
+function finite(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
+}
+function buildStickyFormat(options, cardWidth, cardHeight) {
+  const useCard = options.sizeMode === "card";
+  const width = useCard ? cardWidth : options.width;
+  const height = useCard ? cardHeight : options.height;
+  return {
+    width: Math.max(MIN_STICKY_WIDTH, Math.round(finite(width, 0))),
+    height: Math.max(MIN_STICKY_HEIGHT, Math.round(finite(height, 0))),
+    fontSize: Math.max(8, Math.round(finite(options.fontSize, 20))),
+    textAlign: isStickyTextAlign(options.textAlign) ? options.textAlign : "left"
+  };
+}
+function resolveStickyBackground(options, rawColor, doc) {
+  var _a;
+  if (options.backgroundMode === "keep") return null;
+  if (options.backgroundMode === "custom") {
+    return options.backgroundColor.trim() || null;
+  }
+  const preset = resolveCanvasPresetColor(rawColor, doc);
+  if (!preset) return null;
+  return (_a = lightenColour(preset, FOLLOW_CARD_TINT)) != null ? _a : preset;
+}
+
 // src/merge.ts
 var APPEND_SEPARATOR = "\n\n";
 var MIN_TEXT_WIDTH = 120;
+var CARD_EMBED_GAP = 20;
 var MIN_REPLACEMENT_DIMENSION = 300;
-async function stageNodeIntoDrawing(app, ea, source, kind, offsetX, offsetY, embedMode, targetPath) {
+var warnedNoSticky = false;
+function stageTextCard(ea, text, source, offsetX, offsetY, width, sticky) {
+  if (sticky && typeof ea.addStickyNote === "function") {
+    const format = buildStickyFormat(sticky, source.width, source.height);
+    const fill = resolveStickyBackground(sticky, source.color);
+    const style = ea.style;
+    const previousBackground = style.backgroundColor;
+    const previousFill = style.fillStyle;
+    try {
+      if (fill) {
+        style.backgroundColor = fill;
+        style.fillStyle = "solid";
+      }
+      const id2 = ea.addStickyNote(offsetX, offsetY, text, format);
+      if (id2) return 1;
+    } catch (error) {
+      console.error(
+        "[canvas-drag-merge] addStickyNote() failed; falling back to a text element",
+        error
+      );
+    } finally {
+      style.backgroundColor = previousBackground;
+      style.fillStyle = previousFill;
+    }
+  } else if (sticky && !warnedNoSticky) {
+    warnedNoSticky = true;
+    console.warn(
+      "[canvas-drag-merge] this Excalidraw build has no addStickyNote(); text cards are written as plain text."
+    );
+  }
+  const id = ea.addText(offsetX, offsetY, text, { width });
+  return id ? 1 : 0;
+}
+async function stageEmbeddedPicture(app, ea, target, x, y, width) {
+  var _a;
+  const file = resolveVaultFile(app, target);
+  if (!file || !isPictureFile(file)) {
+    console.warn(`[canvas-drag-merge] ${t("log.embedSkipped", { path: target })}`);
+    return null;
+  }
+  let elementId;
+  try {
+    elementId = await ea.addImage(x, y, file, false, false);
+  } catch (error) {
+    console.error(
+      "[canvas-drag-merge] addImage() failed for an embedded picture",
+      file.path,
+      error
+    );
+    return null;
+  }
+  if (!elementId) return null;
+  fitElementToBox(ea, elementId, width, width, 1);
+  const height = Number((_a = ea.getElement(elementId)) == null ? void 0 : _a.height);
+  return {
+    height: Number.isFinite(height) && height > 0 ? height : width
+  };
+}
+async function stageNodeIntoDrawing(app, ea, source, kind, offsetX, offsetY, embedMode, targetPath, textOptions) {
   if (kind === "text") {
-    const text = typeof source.text === "string" ? source.text : "";
-    if (text.trim().length === 0) return 0;
-    const id = ea.addText(offsetX, offsetY, text, {
-      width: Math.max(Math.round(source.width), MIN_TEXT_WIDTH)
-    });
-    return id ? 1 : 0;
+    const raw = typeof source.text === "string" ? source.text : "";
+    if (raw.trim().length === 0) return 0;
+    const content = extractCardEmbeds(raw, textOptions.textCardEmbedMode);
+    const width = Math.max(Math.round(source.width), MIN_TEXT_WIDTH);
+    let staged = 0;
+    if (content.text.trim().length > 0) {
+      staged += stageTextCard(
+        ea,
+        content.text,
+        source,
+        offsetX,
+        offsetY,
+        width,
+        textOptions.stickyNotes
+      );
+    }
+    let cursor = staged > 0 ? offsetY + Math.max(Math.round(source.height), 0) + CARD_EMBED_GAP : offsetY;
+    for (const target of content.targets) {
+      const picture = await stageEmbeddedPicture(
+        app,
+        ea,
+        target,
+        offsetX,
+        cursor,
+        width
+      );
+      if (!picture) continue;
+      cursor += picture.height + CARD_EMBED_GAP;
+      staged += 1;
+    }
+    return staged;
   }
   const vaultPath = typeof source.file === "string" ? source.file : "";
   const file = vaultPath ? resolveVaultFile(app, vaultPath) : null;
@@ -1305,7 +1628,11 @@ async function executeMerge(context, source, target, action, sourceKind, targetK
           offsetX,
           offsetY,
           context.drawingEmbedMode,
-          drawingFile.path
+          drawingFile.path,
+          {
+            stickyNotes: context.stickyNotes,
+            textCardEmbedMode: context.textCardEmbedMode
+          }
         )
       );
       return {
@@ -1535,9 +1862,32 @@ var DEFAULT_SETTINGS = {
   drawingFolder: DEFAULT_DRAWING_FOLDER,
   monthSubfolders: DEFAULT_MONTH_SUBFOLDERS,
   imageScale: DEFAULT_IMAGE_SCALE,
+  stickyNoteEnabled: false,
+  stickyNoteSizeMode: "card",
+  stickyNoteWidth: 240,
+  stickyNoteHeight: 160,
+  stickyNoteFontSize: 20,
+  stickyNoteTextAlign: "left",
+  stickyNoteBackgroundMode: "follow",
+  stickyNoteBackgroundColor: "#ffec99",
+  textCardEmbedMode: "image",
   cardLinkEmbedded: DEFAULT_CARD_LINK_EMBEDDED,
   language: DEFAULT_LANGUAGE
 };
+var STICKY_NOTE_SIZE_MAX = 600;
+var STICKY_NOTE_WIDTH_RANGE = [
+  MIN_STICKY_WIDTH,
+  STICKY_NOTE_SIZE_MAX
+];
+var STICKY_NOTE_HEIGHT_RANGE = [
+  MIN_STICKY_HEIGHT,
+  STICKY_NOTE_SIZE_MAX
+];
+var STICKY_NOTE_FONT_RANGE = [8, 48];
+function clampNumber(value, range, fallback) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(range[1], Math.max(range[0], Math.round(value)));
+}
 function normalizeSettings(stored) {
   const merged = Object.assign({}, DEFAULT_SETTINGS, stored != null ? stored : {});
   if (!isKnownTriggerKey(merged.triggerKey)) {
@@ -1571,6 +1921,39 @@ function normalizeSettings(stored) {
     merged.monthSubfolders = DEFAULT_SETTINGS.monthSubfolders;
   }
   merged.imageScale = normalizeImageScale(merged.imageScale);
+  if (typeof merged.stickyNoteEnabled !== "boolean") {
+    merged.stickyNoteEnabled = DEFAULT_SETTINGS.stickyNoteEnabled;
+  }
+  if (!isStickySizeMode(merged.stickyNoteSizeMode)) {
+    merged.stickyNoteSizeMode = DEFAULT_SETTINGS.stickyNoteSizeMode;
+  }
+  if (!isStickyTextAlign(merged.stickyNoteTextAlign)) {
+    merged.stickyNoteTextAlign = DEFAULT_SETTINGS.stickyNoteTextAlign;
+  }
+  if (!isStickyBackgroundMode(merged.stickyNoteBackgroundMode)) {
+    merged.stickyNoteBackgroundMode = DEFAULT_SETTINGS.stickyNoteBackgroundMode;
+  }
+  merged.stickyNoteWidth = clampNumber(
+    merged.stickyNoteWidth,
+    STICKY_NOTE_WIDTH_RANGE,
+    DEFAULT_SETTINGS.stickyNoteWidth
+  );
+  merged.stickyNoteHeight = clampNumber(
+    merged.stickyNoteHeight,
+    STICKY_NOTE_HEIGHT_RANGE,
+    DEFAULT_SETTINGS.stickyNoteHeight
+  );
+  merged.stickyNoteFontSize = clampNumber(
+    merged.stickyNoteFontSize,
+    STICKY_NOTE_FONT_RANGE,
+    DEFAULT_SETTINGS.stickyNoteFontSize
+  );
+  if (typeof merged.stickyNoteBackgroundColor !== "string" || !/^#[0-9a-f]{6}$/iu.test(merged.stickyNoteBackgroundColor.trim())) {
+    merged.stickyNoteBackgroundColor = DEFAULT_SETTINGS.stickyNoteBackgroundColor;
+  }
+  if (!isEmbedMode(merged.textCardEmbedMode)) {
+    merged.textCardEmbedMode = DEFAULT_SETTINGS.textCardEmbedMode;
+  }
   if (typeof merged.cardLinkEmbedded !== "boolean") {
     merged.cardLinkEmbedded = DEFAULT_SETTINGS.cardLinkEmbedded;
   }
@@ -1626,6 +2009,120 @@ var CanvasDragMergeSettingTab = class extends import_obsidian.PluginSettingTab {
     );
     refresh();
   }
+  /**
+   * Renders the sticky-note rows.
+   *
+   * Only the rows that currently matter are shown: the two size sliders appear
+   * for the "fixed" rule, and the colour picker for the "custom" fill, so the
+   * pane stays short and the interaction between the rows is obvious.
+   *
+   * @param containerEl - The settings pane.
+   */
+  renderStickySettings(containerEl) {
+    new import_obsidian.Setting(containerEl).setName(t("settings.sticky.sizeMode.name")).setDesc(t("settings.sticky.sizeMode.desc")).addDropdown((dropdown) => {
+      dropdown.addOption(
+        "card",
+        t("settings.sticky.sizeMode.card")
+      );
+      dropdown.addOption(
+        "fixed",
+        t("settings.sticky.sizeMode.fixed")
+      );
+      dropdown.setValue(this.plugin.settings.stickyNoteSizeMode).onChange(async (value) => {
+        this.plugin.settings.stickyNoteSizeMode = isStickySizeMode(value) ? value : DEFAULT_SETTINGS.stickyNoteSizeMode;
+        await this.plugin.saveSettings();
+        this.display();
+      });
+    });
+    if (this.plugin.settings.stickyNoteSizeMode === "fixed") {
+      this.renderStickySizeSlider(
+        containerEl,
+        t("settings.sticky.width.name"),
+        t("settings.sticky.width.desc"),
+        MIN_STICKY_WIDTH,
+        () => this.plugin.settings.stickyNoteWidth,
+        (value) => {
+          this.plugin.settings.stickyNoteWidth = value;
+        }
+      );
+      this.renderStickySizeSlider(
+        containerEl,
+        t("settings.sticky.height.name"),
+        t("settings.sticky.height.desc"),
+        MIN_STICKY_HEIGHT,
+        () => this.plugin.settings.stickyNoteHeight,
+        (value) => {
+          this.plugin.settings.stickyNoteHeight = value;
+        }
+      );
+    }
+    new import_obsidian.Setting(containerEl).setName(t("settings.sticky.fontSize.name")).setDesc(t("settings.sticky.fontSize.desc")).addSlider(
+      (slider) => slider.setLimits(
+        STICKY_NOTE_FONT_RANGE[0],
+        STICKY_NOTE_FONT_RANGE[1],
+        1
+      ).setValue(this.plugin.settings.stickyNoteFontSize).setDynamicTooltip().onChange(async (value) => {
+        this.plugin.settings.stickyNoteFontSize = value;
+        await this.plugin.saveSettings();
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName(t("settings.sticky.align.name")).addDropdown((dropdown) => {
+      dropdown.addOption("left", t("settings.sticky.align.left"));
+      dropdown.addOption("center", t("settings.sticky.align.center"));
+      dropdown.addOption("right", t("settings.sticky.align.right"));
+      dropdown.setValue(this.plugin.settings.stickyNoteTextAlign).onChange(async (value) => {
+        this.plugin.settings.stickyNoteTextAlign = isStickyTextAlign(value) ? value : DEFAULT_SETTINGS.stickyNoteTextAlign;
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian.Setting(containerEl).setName(t("settings.sticky.background.name")).setDesc(t("settings.sticky.background.desc")).addDropdown((dropdown) => {
+      dropdown.addOption(
+        "follow",
+        t("settings.sticky.background.follow")
+      );
+      dropdown.addOption(
+        "custom",
+        t("settings.sticky.background.custom")
+      );
+      dropdown.addOption(
+        "keep",
+        t("settings.sticky.background.keep")
+      );
+      dropdown.setValue(this.plugin.settings.stickyNoteBackgroundMode).onChange(async (value) => {
+        this.plugin.settings.stickyNoteBackgroundMode = isStickyBackgroundMode(value) ? value : DEFAULT_SETTINGS.stickyNoteBackgroundMode;
+        await this.plugin.saveSettings();
+        this.display();
+      });
+    });
+    if (this.plugin.settings.stickyNoteBackgroundMode === "custom") {
+      new import_obsidian.Setting(containerEl).setName(t("settings.sticky.color.name")).addColorPicker(
+        (picker) => picker.setValue(
+          this.plugin.settings.stickyNoteBackgroundColor
+        ).onChange(async (value) => {
+          this.plugin.settings.stickyNoteBackgroundColor = value;
+          await this.plugin.saveSettings();
+        })
+      );
+    }
+  }
+  /**
+   * Renders one note-dimension slider.
+   *
+   * @param containerEl - The settings pane.
+   * @param name - Row label.
+   * @param desc - Row description.
+   * @param min - Lowest accepted value; also the slider's lower bound.
+   * @param read - Reads the current value.
+   * @param write - Stores the new value.
+   */
+  renderStickySizeSlider(containerEl, name, desc, min, read, write) {
+    new import_obsidian.Setting(containerEl).setName(name).setDesc(desc).addSlider(
+      (slider) => slider.setLimits(min, STICKY_NOTE_SIZE_MAX, 10).setValue(read()).setDynamicTooltip().onChange(async (value) => {
+        write(value);
+        await this.plugin.saveSettings();
+      })
+    );
+  }
   display() {
     const { containerEl } = this;
     containerEl.empty();
@@ -1651,6 +2148,27 @@ var CanvasDragMergeSettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       })
     );
+    new import_obsidian.Setting(containerEl).setName(t("settings.sticky.name")).setDesc(t("settings.sticky.desc")).addToggle(
+      (toggle) => toggle.setValue(this.plugin.settings.stickyNoteEnabled).onChange(async (value) => {
+        this.plugin.settings.stickyNoteEnabled = value;
+        await this.plugin.saveSettings();
+        this.display();
+      })
+    );
+    if (this.plugin.settings.stickyNoteEnabled) {
+      this.renderStickySettings(containerEl);
+    }
+    new import_obsidian.Setting(containerEl).setName(t("settings.cardEmbed.name")).setDesc(t("settings.cardEmbed.desc")).addDropdown((dropdown) => {
+      dropdown.addOption("image", t("settings.cardEmbed.image"));
+      dropdown.addOption("text", t("settings.cardEmbed.text"));
+      dropdown.addOption("keep", t("settings.cardEmbed.keep"));
+      dropdown.setValue(this.plugin.settings.textCardEmbedMode).onChange(async (value) => {
+        this.plugin.settings.textCardEmbedMode = isEmbedMode(
+          value
+        ) ? value : DEFAULT_SETTINGS.textCardEmbedMode;
+        await this.plugin.saveSettings();
+      });
+    });
     new import_obsidian.Setting(containerEl).setName(t("settings.triggerKey.name")).setDesc(t("settings.triggerKey.desc")).addDropdown((dropdown) => {
       for (const option of triggerKeyOptions()) {
         dropdown.addOption(option.value, option.label);
@@ -2150,6 +2668,16 @@ var CanvasDragMergePlugin = class extends import_obsidian2.Plugin {
         this.settings.monthSubfolders
       ) : void 0,
       drawingEmbedMode: this.settings.drawingEmbedMode,
+      stickyNotes: this.settings.stickyNoteEnabled ? {
+        sizeMode: this.settings.stickyNoteSizeMode,
+        width: this.settings.stickyNoteWidth,
+        height: this.settings.stickyNoteHeight,
+        fontSize: this.settings.stickyNoteFontSize,
+        textAlign: this.settings.stickyNoteTextAlign,
+        backgroundMode: this.settings.stickyNoteBackgroundMode,
+        backgroundColor: this.settings.stickyNoteBackgroundColor
+      } : null,
+      textCardEmbedMode: this.settings.textCardEmbedMode,
       imageScalePercent: this.settings.imageScale,
       createNodeId: (taken) => createNodeId(taken)
     };

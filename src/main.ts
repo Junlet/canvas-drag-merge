@@ -546,6 +546,20 @@ export default class CanvasDragMergePlugin extends Plugin {
 					)
 				: undefined,
 			drawingEmbedMode: this.settings.drawingEmbedMode,
+			stickyNotes: this.settings.stickyNoteEnabled
+				? {
+						sizeMode: this.settings.stickyNoteSizeMode,
+						width: this.settings.stickyNoteWidth,
+						height: this.settings.stickyNoteHeight,
+						fontSize: this.settings.stickyNoteFontSize,
+						textAlign: this.settings.stickyNoteTextAlign,
+						backgroundMode:
+							this.settings.stickyNoteBackgroundMode,
+						backgroundColor:
+							this.settings.stickyNoteBackgroundColor,
+					}
+				: null,
+			textCardEmbedMode: this.settings.textCardEmbedMode,
 			imageScalePercent: this.settings.imageScale,
 			createNodeId: (taken) => createNodeId(taken),
 		};

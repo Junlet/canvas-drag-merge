@@ -20,6 +20,32 @@ import { t } from "./i18n";
 /** Folder/id of the Excalidraw plugin in Obsidian's plugin registry. */
 export const EXCALIDRAW_PLUGIN_ID = "obsidian-excalidraw-plugin";
 
+/** Extensions Excalidraw can insert as real pictures. */
+const PICTURE_EXTENSIONS = new Set([
+	"png",
+	"jpg",
+	"jpeg",
+	"gif",
+	"webp",
+	"svg",
+	"bmp",
+	"avif",
+]);
+
+/**
+ * Reports whether a vault file is a picture this plugin can place directly.
+ *
+ * Used for pictures embedded *inside* a text card: only real pictures belong
+ * there, since quietly rasterising a note or a PDF because a card linked one
+ * would be a surprise.
+ *
+ * @param file - Candidate vault file.
+ * @returns True for a picture extension.
+ */
+export function isPictureFile(file: TFile): boolean {
+	return PICTURE_EXTENSIONS.has((file.extension || "").toLowerCase());
+}
+
 /** How long to wait for the drawing file to appear on disk. */
 const FILE_WAIT_TIMEOUT_MS = 5000;
 
@@ -53,6 +79,37 @@ export interface ExcalidrawAutomateLike {
 		formatting?: Record<string, unknown>,
 		id?: string
 	): string;
+	/**
+	 * Stages a sticky note: a `stickynote` container with a fitted label.
+	 *
+	 * **Optional on purpose.** Sticky notes are a recent Excalidraw feature, so
+	 * an older build has no such method; callers must check for it and fall back
+	 * to {@link addText}. Returns the *container's* id.
+	 *
+	 * Size and appearance come from the workbench style ({@link style}), so the
+	 * caller sets `backgroundColor` / `fillStyle` before calling.
+	 */
+	addStickyNote?(
+		topX: number,
+		topY: number,
+		text: string,
+		formatting?: {
+			width?: number;
+			height?: number;
+			fontSize?: number;
+			fontFamily?: number;
+			textAlign?: "left" | "center" | "right";
+			textVerticalAlign?: "top" | "middle" | "bottom";
+		},
+		id?: string
+	): string;
+	/**
+	 * The workbench style every staged element inherits.
+	 *
+	 * Only the sticky-note path touches it (fill colour and fill style); the
+	 * object is shared, so callers must restore what they change.
+	 */
+	style: Record<string, unknown>;
 	/** Stages an interactive embeddable element. Returns its id, or null. */
 	addEmbeddable(
 		topX: number,
@@ -323,13 +380,16 @@ export function resolveVaultFile(
  * The maths lives in `sizing.ts`, where it can be tested without Obsidian: fit
  * the aspect ratio into the node's box, then apply the user's insertion size.
  *
+ * Exported so a text card's embedded pictures can be fitted with the same rule
+ * as every other picture this plugin places.
+ *
  * @param ea - The ExcalidrawAutomate instance.
  * @param elementId - Id returned by `addImage`.
  * @param boxWidth - Target width, from the Canvas node.
  * @param boxHeight - Target height, from the Canvas node.
  * @param scale - Insertion-size multiplier from the settings.
  */
-function fitElementToBox(
+export function fitElementToBox(
 	ea: ExcalidrawAutomateLike,
 	elementId: string,
 	boxWidth: number,

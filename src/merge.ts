@@ -29,17 +29,28 @@ import {
 	appendToDrawing,
 	createDrawingFromImages,
 	DrawingFailedError,
+	fitElementToBox,
+	isPictureFile,
 	resolveVaultFile,
 	type DrawingEmbedMode,
 	type ExcalidrawBridge,
 } from "./excalidraw";
 import { t } from "./i18n";
+import { extractCardEmbeds } from "./cardcontent";
+import {
+	buildStickyFormat,
+	resolveStickyBackground,
+	type StickyNoteOptions,
+} from "./sticky";
 
 /** Blank line inserted between existing content and appended content. */
 const APPEND_SEPARATOR = "\n\n";
 
 /** Narrow text elements stay readable instead of wrapping one glyph per line. */
 const MIN_TEXT_WIDTH = 120;
+
+/** Vertical gap between a text card and the pictures pulled out of it. */
+const CARD_EMBED_GAP = 20;
 
 /**
  * Minimum footprint of the node that replaces two merged pictures.
@@ -71,14 +82,137 @@ export interface MergeOutcome {
 	consumesSource?: boolean;
 }
 
+/** Warned once per session; `addStickyNote()` is missing on older Excalidraw. */
+let warnedNoSticky = false;
+
+/**
+ * Writes a text card's body into the drawing.
+ *
+ * A sticky note is the default wish, but it is only used when the user enabled
+ * it *and* the installed Excalidraw has `addStickyNote()`; otherwise the body
+ * becomes a plain text element, so a merge never fails over a missing API.
+ *
+ * The workbench style is shared across every staged element, so the fill it
+ * needs for a note is restored immediately after the note is staged.
+ *
+ * @param ea - The ExcalidrawAutomate instance.
+ * @param text - The card's body, with embeds already handled.
+ * @param source - The node being staged, for its size and colour.
+ * @param offsetX - X position.
+ * @param offsetY - Y position.
+ * @param width - Text width, when a note is not used.
+ * @param sticky - Sticky-note settings, or null to always use plain text.
+ * @returns 1 when something was staged, 0 otherwise.
+ */
+function stageTextCard(
+	ea: ExcalidrawBridge["ea"],
+	text: string,
+	source: CanvasNodeData,
+	offsetX: number,
+	offsetY: number,
+	width: number,
+	sticky: StickyNoteOptions | null
+): number {
+	if (sticky && typeof ea.addStickyNote === "function") {
+		const format = buildStickyFormat(sticky, source.width, source.height);
+		const fill = resolveStickyBackground(sticky, source.color);
+		const style = ea.style;
+		const previousBackground = style.backgroundColor;
+		const previousFill = style.fillStyle;
+		try {
+			if (fill) {
+				style.backgroundColor = fill;
+				// A sticky note is only filled when the style is `solid`;
+				// Excalidraw's default is hachure, which would hatch it.
+				style.fillStyle = "solid";
+			}
+			const id = ea.addStickyNote(offsetX, offsetY, text, format);
+			if (id) return 1;
+		} catch (error) {
+			console.error(
+				"[canvas-drag-merge] addStickyNote() failed; falling back to a text element",
+				error
+			);
+		} finally {
+			style.backgroundColor = previousBackground;
+			style.fillStyle = previousFill;
+		}
+	} else if (sticky && !warnedNoSticky) {
+		warnedNoSticky = true;
+		console.warn(
+			"[canvas-drag-merge] this Excalidraw build has no addStickyNote(); " +
+				"text cards are written as plain text."
+		);
+	}
+
+	const id = ea.addText(offsetX, offsetY, text, { width });
+	return id ? 1 : 0;
+}
+
+/**
+ * Places one picture embedded in a text card.
+ *
+ * Only real pictures are placed. An unresolvable or non-picture target is
+ * reported and skipped: a text element cannot render the marker anyway, so
+ * leaving `![[file]]` behind would be the worse outcome.
+ *
+ * @param app - The Obsidian app.
+ * @param ea - The ExcalidrawAutomate instance.
+ * @param target - Embed target as written in the card.
+ * @param x - Left edge.
+ * @param y - Top edge.
+ * @param width - The card's width, also the fitting box.
+ * @returns The placed height, or null when nothing was placed.
+ */
+async function stageEmbeddedPicture(
+	app: App,
+	ea: ExcalidrawBridge["ea"],
+	target: string,
+	x: number,
+	y: number,
+	width: number
+): Promise<{ height: number } | null> {
+	const file = resolveVaultFile(app, target);
+	if (!file || !isPictureFile(file)) {
+		console.warn(`[canvas-drag-merge] ${t("log.embedSkipped", { path: target })}`);
+		return null;
+	}
+
+	let elementId: string;
+	try {
+		elementId = await ea.addImage(x, y, file, false, false);
+	} catch (error) {
+		console.error(
+			"[canvas-drag-merge] addImage() failed for an embedded picture",
+			file.path,
+			error
+		);
+		return null;
+	}
+	if (!elementId) return null;
+
+	fitElementToBox(ea, elementId, width, width, 1);
+	const height = Number(ea.getElement(elementId)?.height);
+	return {
+		height: Number.isFinite(height) && height > 0 ? height : width,
+	};
+}
+
 /**
  * Stages one Canvas node as Excalidraw elements on the workbench.
  *
- * Text becomes a text element. Pictures are inserted as pictures. Notes and
- * other drawings are handed to `addImage()` -- ExcalidrawAutomate rasterises
- * Markdown notes and Excalidraw files on the fly -- unless the user asked for
- * the interactive form, in which case an `embeddable` element is staged so the
- * content stays live and scrollable inside the drawing.
+ * A text card is Markdown, so two things happen before it can be written:
+ *
+ *   - its picture embeds are handled by `cardcontent.ts` -- placed as pictures,
+ *     reduced to file names, or left as raw markers, per the setting;
+ *   - when the user asked for it, the body becomes a **sticky note** instead of
+ *     a bare text element (a `stickynote` container with a fitted label).
+ *
+ * Pictures are inserted as pictures. Notes and other drawings are handed to
+ * `addImage()` -- ExcalidrawAutomate rasterises Markdown notes and Excalidraw
+ * files on the fly -- unless the user asked for the interactive form, in which
+ * case an `embeddable` element is staged so the content stays live inside the
+ * drawing.
  *
  * @param ea - The ExcalidrawAutomate instance.
  * @param source - The node to stage.
@@ -87,7 +221,8 @@ export interface MergeOutcome {
  * @param offsetY - Y position for the staged element.
  * @param embedMode - Image snapshot or interactive embed, for file sources.
  * @param targetPath - Vault path of the drawing being written to.
- * @returns How many elements were staged (0 or 1).
+ * @param textOptions - Sticky-note settings and the embed rule for text cards.
+ * @returns How many elements were staged.
  */
 async function stageNodeIntoDrawing(
 	app: App,
@@ -97,15 +232,54 @@ async function stageNodeIntoDrawing(
 	offsetX: number,
 	offsetY: number,
 	embedMode: DrawingEmbedMode,
-	targetPath: string
+	targetPath: string,
+	textOptions: {
+		stickyNotes: StickyNoteOptions | null;
+		textCardEmbedMode: string;
+	}
 ): Promise<number> {
 	if (kind === "text") {
-		const text = typeof source.text === "string" ? source.text : "";
-		if (text.trim().length === 0) return 0;
-		const id = ea.addText(offsetX, offsetY, text, {
-			width: Math.max(Math.round(source.width), MIN_TEXT_WIDTH),
-		});
-		return id ? 1 : 0;
+		const raw = typeof source.text === "string" ? source.text : "";
+		if (raw.trim().length === 0) return 0;
+
+		const content = extractCardEmbeds(raw, textOptions.textCardEmbedMode);
+		const width = Math.max(Math.round(source.width), MIN_TEXT_WIDTH);
+		let staged = 0;
+
+		if (content.text.trim().length > 0) {
+			staged += stageTextCard(
+				ea,
+				content.text,
+				source,
+				offsetX,
+				offsetY,
+				width,
+				textOptions.stickyNotes
+			);
+		}
+
+		// Pictures pulled out of the card go directly below it.
+		let cursor =
+			staged > 0
+				? offsetY +
+					Math.max(Math.round(source.height), 0) +
+					CARD_EMBED_GAP
+				: offsetY;
+		for (const target of content.targets) {
+			const picture = await stageEmbeddedPicture(
+				app,
+				ea,
+				target,
+				offsetX,
+				cursor,
+				width
+			);
+			if (!picture) continue;
+			cursor += picture.height + CARD_EMBED_GAP;
+			staged += 1;
+		}
+
+		return staged;
 	}
 
 	const vaultPath = typeof source.file === "string" ? source.file : "";
@@ -187,6 +361,14 @@ export interface MergeContext {
 	imageScalePercent: number;
 	/** Image snapshot or interactive embed, when adding files to a drawing. */
 	drawingEmbedMode: DrawingEmbedMode;
+	/**
+	 * Sticky-note settings for text cards written into a drawing.
+	 *
+	 * Null keeps the old behaviour: a plain text element.
+	 */
+	stickyNotes: StickyNoteOptions | null;
+	/** How picture embeds inside a text card are handled; see `cardcontent.ts`. */
+	textCardEmbedMode: string;
 	/** Mints an id for a node inserted back into the Canvas. */
 	createNodeId: (taken: Set<string>) => string;
 }
@@ -477,7 +659,11 @@ export async function executeMerge(
 						offsetX,
 						offsetY,
 						context.drawingEmbedMode,
-						drawingFile.path
+						drawingFile.path,
+						{
+							stickyNotes: context.stickyNotes,
+							textCardEmbedMode: context.textCardEmbedMode,
+						}
 					)
 			);
 
